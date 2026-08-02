@@ -5,9 +5,9 @@
   "dependencies": {
     "discord.js": "^14.14.1",
     "@discordjs/voice": "^0.17.0",
-    "distube": "^4.1.2"
+    "distube": "^4.1.2",
+    "@distube/yt-dlp": "^11.3.0",
+    "@distube/soundcloud": "^2.2.1",
+    "@distube/spotify": "^2.0.1"
   }
 }
-
-
-
