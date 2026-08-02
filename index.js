@@ -1,13 +1,13 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, enterState } = require('@discordjs/voice');
-const { YTDLP } = require('@distube/yt-dlp');
+const ytdl = require('@distube/ytdl-core');
 const ytSearch = require('yt-search');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
 const ALLOWED_CHANNEL_ID = '1527850274511917251';
 
-// سيرفر إبقاء البوت متصلاً 24/7 على Render
+// سيرفر HTTP لإبقاء الخدمة شغال في Render المجاني 24/7
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.write('MVP Music Bot Online');
@@ -27,7 +27,7 @@ let currentConnection = null;
 let currentPlayer = null;
 
 client.on('ready', () => {
-    console.log(`✅ تم تسجيل الدخول بنجاح: ${client.user.tag}`);
+    console.log(`✅ البوت جاهز وأونلاين باسم: ${client.user.tag}`);
 });
 
 process.on('unhandledRejection', error => console.error('Unhandled Promise:', error));
@@ -54,21 +54,22 @@ client.on('messageCreate', async (message) => {
             let targetUrl = input;
             let trackTitle = input;
 
-            // إذا لم يكن المدخل رابط مباشر من يوتيوب، نجري بحثاً سريعا
+            // إذا كان المدخل نص عادي وليس رابط، يبحث ويستخرج أول فيديو
             if (!input.startsWith('http://') && !input.startsWith('https://')) {
                 const searchResult = await ytSearch(input);
                 if (!searchResult || !searchResult.videos.length) {
-                    return searchingMsg.edit('❌ لم يتم العثور على نتائج لهذا البحث!');
+                    return searchingMsg.edit('❌ لم يتم العثور على نتائج للبحث!');
                 }
                 targetUrl = searchResult.videos[0].url;
                 trackTitle = searchResult.videos[0].title;
             }
 
-            // استخدام yt-dlp للالتفاف على حظر يوتيوب واستخراج ستريم الصوت مباشرة
-            const ytdlp = new YTDLP();
-            const stream = ytdlp.stream(targetUrl, {
+            // استخراج ستريم الصوت مباشرة بأحدث إصدار ytdl
+            const stream = ytdl(targetUrl, {
                 filter: 'audioonly',
-                quality: 'highestaudio'
+                highWaterMark: 1 << 25,
+                quality: 'highestaudio',
+                dlChunkSize: 0
             });
 
             if (currentConnection) {
@@ -106,7 +107,7 @@ client.on('messageCreate', async (message) => {
             console.error("Execution Error:", error);
             cleanupConnection();
             if (searchingMsg) {
-                searchingMsg.edit('❌ تعذر تشغيل المقطع، تأكد من صحة الرابط أو الاسم!');
+                searchingMsg.edit('❌ تعذر تشغيل المقطع، جرب رابط آخر أو اسم مختلف!');
             }
         }
     }
