@@ -4,14 +4,12 @@ const play = require('play-dl');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
-
-
 const ALLOWED_CHANNEL_ID = '1527850274511917251';
 
-// سيرفر HTTP بسيط جداً لإرضاء Render في الخطة المجانية
+// سيرفر HTTP لإبقاء Render أونلاين
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.write('MVP Bot is Running Free!');
+    res.write('MVP Bot is Live!');
     res.end();
 }).listen(process.env.PORT || 10000);
 
@@ -52,18 +50,30 @@ client.on('messageCreate', async (message) => {
         try {
             searchingMsg = await message.reply(`🔎 جاري البحث عن: **${query}**...`);
 
-            const ytInfo = await play.search(query, { limit: 1 });
-            if (!ytInfo || ytInfo.length === 0) {
-                return searchingMsg.edit('❌ لم يتم العثور على المقطع!');
+            // البحث أولاً في ساوند كلاود لتفادي حظر IP سيرفرات يوتيوب
+            let streamData;
+            let trackTitle = query;
+
+            try {
+                const scResult = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
+                if (scResult && scResult.length > 0) {
+                    streamData = await play.stream(scResult[0].url);
+                    trackTitle = scResult[0].name;
+                }
+            } catch (e) {
+                console.log("Soundcloud search failed, trying Youtube direct...");
             }
 
-            const video = ytInfo[0];
-            currentUrl = video.url;
-            isLooping = false;
-
-            const stream = await play.stream(video.url, {
-                discordPlayerCompatibility: true
-            });
+            // إذا لم يجد في ساوند كلاود يجرب يوتيوب
+            if (!streamData) {
+                const ytResult = await play.search(query, { limit: 1 });
+                if (!ytResult || ytResult.length === 0) {
+                    return searchingMsg.edit('❌ لم يتم العثور على المقطع!');
+                }
+                streamData = await play.stream(ytResult[0].url, { discordPlayerCompatibility: true });
+                trackTitle = ytResult[0].title;
+                currentUrl = ytResult[0].url;
+            }
 
             if (currentConnection) {
                 currentConnection.destroy();
@@ -77,28 +87,18 @@ client.on('messageCreate', async (message) => {
             });
 
             currentPlayer = createAudioPlayer();
-            const resource = createAudioResource(stream.stream, { inputType: stream.type });
+            const resource = createAudioResource(streamData.stream, { inputType: streamData.type });
 
             currentPlayer.play(resource);
             currentConnection.subscribe(currentPlayer);
 
-            await searchingMsg.edit(`▶️ شغال الآن: **${video.title}**`);
+            await searchingMsg.edit(`▶️ شغال الآن: **${trackTitle}**`);
 
-            currentPlayer.on(AudioPlayerStatus.Idle, async () => {
-                if (isLooping && currentUrl) {
-                    try {
-                        const nextStream = await play.stream(currentUrl, { discordPlayerCompatibility: true });
-                        const nextResource = createAudioResource(nextStream.stream, { inputType: nextStream.type });
-                        currentPlayer.play(nextResource);
-                    } catch (e) {
-                        console.error("Looping Error:", e);
-                    }
-                } else {
-                    if (currentConnection) {
-                        currentConnection.destroy();
-                        currentConnection = null;
-                        currentPlayer = null;
-                    }
+            currentPlayer.on(AudioPlayerStatus.Idle, () => {
+                if (currentConnection) {
+                    currentConnection.destroy();
+                    currentConnection = null;
+                    currentPlayer = null;
                 }
             });
 
@@ -109,7 +109,7 @@ client.on('messageCreate', async (message) => {
         } catch (error) {
             console.error("General Error:", error);
             if (searchingMsg) {
-                searchingMsg.edit('❌ تعذر تشغيل المقطع حالياً، جرب البحث باسم آخر!');
+                searchingMsg.edit('❌ تعذر تشغيل المقطع، جرب كتابة اسم المقطع بشكل أوضح أو رابط مباشر!');
             }
         }
     }
@@ -126,14 +126,6 @@ client.on('messageCreate', async (message) => {
         } else {
             return message.reply('❌ البوت مو شغال أساساً!');
         }
-    }
-
-    else if (text === 'كرر') {
-        if (!currentPlayer || !currentUrl) {
-            return message.reply('❌ ما فيه شيء شغال حالياً!');
-        }
-        isLooping = !isLooping;
-        return message.channel.send(isLooping ? '🔄 تم تفعيل التكرار!' : '⏹️ تم إلغاء التكرار!');
     }
 });
 
