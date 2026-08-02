@@ -22,19 +22,19 @@ const client = new Client({
     ]
 });
 
-// سيرفرات Lavalink عامة ومجانية لتجاوز حظر يوتيوب
+// سيرفرات Lavalink عامة ومستقرة
 const Nodes = [
     {
-        name: 'Public-Node-1',
-        url: 'lavalink.vostub.ru:443',
-        auth: 'youshallnotpass',
+        name: 'Node-1',
+        url: 'lava.darrennathanael.com:443',
+        auth: 'darren',
         secure: true
     },
     {
-        name: 'Public-Node-2',
-        url: 'lava.link:80',
+        name: 'Node-2',
+        url: 'lavalink.serenity.gg:443',
         auth: 'youshallnotpass',
-        secure: false
+        secure: true
     }
 ];
 
@@ -68,7 +68,7 @@ client.on('messageCreate', async (message) => {
         const query = text.slice(2).trim();
         if (!query) return message.reply('❌ اكتب اسم الأغنية أو الرابط بعد حرف ش!');
 
-        let searchingMsg = await message.reply(`🔎 جاري البحث والتشغيل عبر سيرفر الصوت...`);
+        let searchingMsg = await message.reply(`🔎 جاري البحث والتشغيل...`);
 
         try {
             let player = kazagumo.players.get(message.guild.id);
@@ -80,6 +80,11 @@ client.on('messageCreate', async (message) => {
                     voiceId: voiceChannel.id,
                     deaf: true
                 });
+            } else {
+                // إذا البوت موجود مسبقاً، يغير رُميته للروم اللي انت فيه حالياً
+                if (player.voiceId !== voiceChannel.id) {
+                    player.setVoiceChannel(voiceChannel.id);
+                }
             }
 
             let result = await kazagumo.search(query, { requester: message.author });
