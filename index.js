@@ -1,5 +1,8 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { DisTube } = require('distube');
+const { YtDlpPlugin } = require('@distube/yt-dlp');
+const { SoundCloudPlugin } = require('@distube/soundcloud');
+const { SpotifyPlugin } = require('@distube/spotify');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
@@ -21,11 +24,16 @@ const client = new Client({
     ]
 });
 
+// تفعيل كل الإضافات (يوتيوب، ساوند كلاود، سبوتيفاي) معاً
 const distube = new DisTube(client, {
     emitNewSongOnly: true,
     savePreviousSongs: false,
     nsfw: true,
-    searchSongs: 0
+    plugins: [
+        new YtDlpPlugin(),
+        new SoundCloudPlugin(),
+        new SpotifyPlugin()
+    ]
 });
 
 client.on('ready', () => {
@@ -38,7 +46,7 @@ client.on('messageCreate', async (message) => {
 
     const text = message.content.trim();
 
-    // 1. أمر التشغيل: ش [اسم الأغنية أو الرابط]
+    // 1. أمر التشغيل الشامل
     if (text.startsWith('ش ')) {
         const voiceChannel = message.member.voice.channel;
         if (!voiceChannel) {
@@ -46,7 +54,7 @@ client.on('messageCreate', async (message) => {
         }
 
         const query = text.slice(2).trim();
-        if (!query) return message.reply('❌ اكتب اسم الأغنية أو رابط اليوتيوب بعد حرف ش!');
+        if (!query) return message.reply('❌ اكتب اسم الأغنية أو الرابط بعد حرف ش!');
 
         try {
             await distube.play(voiceChannel, query, {
@@ -56,7 +64,7 @@ client.on('messageCreate', async (message) => {
             return message.react('✅').catch(() => {});
         } catch (error) {
             console.error(error);
-            return message.reply('❌ صار خطأ، تأكد من كتابة اسم الأغنية بوضوح أو حط رابط يوتيوب مباشر.');
+            return message.reply('❌ تعذر التشغيل، تأكد من صحة الرابط أو الاسم.');
         }
     }
 
@@ -80,7 +88,7 @@ client.on('messageCreate', async (message) => {
             queue.pause();
             return message.channel.send('⏸️ تم ايقاف الأغنية مؤقتاً.');
         } catch {
-            return message.reply('❌ حدث خطأ أثناء إيقاف الأغنية.');
+            return message.reply('❌ حدث خطأ.');
         }
     }
 
@@ -92,7 +100,7 @@ client.on('messageCreate', async (message) => {
             queue.resume();
             return message.channel.send('▶️ تم استكمال تشغيل الأغنية.');
         } catch {
-            return message.reply('❌ الأغنية شغالة أساساً أو لا يمكن استكمالها.');
+            return message.reply('❌ حدث خطأ.');
         }
     }
 
@@ -110,7 +118,7 @@ client.on('messageCreate', async (message) => {
 });
 
 distube.on('playSong', (queue, song) => {
-    queue.textChannel.send(`▶️ شغال الآن: **${song.name}**`);
+    queue.textChannel.send(`▶️ شغال الآن: **${song.name}** (${song.source})`);
 });
 
 client.login(TOKEN);
