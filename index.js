@@ -5,7 +5,7 @@ const http = require('http');
 const TOKEN = process.env.TOKEN;
 const ALLOWED_CHANNEL_ID = '1527850274511917251';
 
-// سيرفر إبقاء البوت أونلاين على Render
+// سيرفر إبقاء البوت شغال على Render
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.write('MVP Music Bot Online');
@@ -25,12 +25,11 @@ const distube = new DisTube(client, {
     emitNewSongOnly: true,
     savePreviousSongs: false,
     nsfw: true,
-    // خوارزمية لجلب أقرب وأدق النتائج للبحث
-    searchSongs: 1 
+    searchSongs: 0
 });
 
 client.on('ready', () => {
-    console.log(`✅ تم تسجيل الدخول بنجاح باسم: ${client.user.tag}`);
+    console.log(`✅ البوت شغال وجاهز: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -39,6 +38,7 @@ client.on('messageCreate', async (message) => {
 
     const text = message.content.trim();
 
+    // 1. أمر التشغيل: ش [اسم الأغنية أو الرابط]
     if (text.startsWith('ش ')) {
         const voiceChannel = message.member.voice.channel;
         if (!voiceChannel) {
@@ -46,39 +46,69 @@ client.on('messageCreate', async (message) => {
         }
 
         const query = text.slice(2).trim();
-        if (!query) return message.reply('❌ اكتب اسم الأغنية أو الرابط بعد حرف ش!');
-
-        let searchingMsg = await message.reply(`🔎 جاري البحث عن أقرب النتائج والتشغيل...`);
+        if (!query) return message.reply('❌ اكتب اسم الأغنية أو رابط اليوتيوب بعد حرف ش!');
 
         try {
-            // ستقوم هذه الدالة بالبحث التلقائي عن أقرب مطابقة وتشغيلها ودخول الروم
             await distube.play(voiceChannel, query, {
                 textChannel: message.channel,
                 member: message.member
             });
-            return searchingMsg.delete().catch(() => {});
+            return message.react('✅').catch(() => {});
         } catch (error) {
             console.error(error);
-            return searchingMsg.edit('❌ لم يتم العثور على نتائج مطابقة، جرب كتابة اسم الأغنية بشكل دقيق!');
+            return message.reply('❌ صار خطأ، تأكد من كتابة اسم الأغنية بوضوح أو حط رابط يوتيوب مباشر.');
         }
     }
 
+    // 2. أمر التخطي (سكيب)
     else if (text === 'سكيب') {
         const queue = distube.getQueue(message.guild.id);
-        if (queue) {
-            try {
-                await queue.skip();
-                return message.channel.send('🛑 تم تخطي المقطع.');
-            } catch {
-                return message.reply('❌ ما فيه أغنية تالية لتخطيها!');
-            }
-        } else {
-            return message.reply('❌ البوت مو شغال أساساً!');
+        if (!queue) return message.reply('❌ ما فيه شيء شغال أساساً!');
+        try {
+            await queue.skip();
+            return message.channel.send('🛑 تم تخطي المقطع.');
+        } catch {
+            return message.reply('❌ ما فيه أغنية تالية لتخطيها!');
+        }
+    }
+
+    // 3. أمر التوقف المؤقت (توقف)
+    else if (text === 'توقف') {
+        const queue = distube.getQueue(message.guild.id);
+        if (!queue) return message.reply('❌ البوت مو شغال!');
+        try {
+            queue.pause();
+            return message.channel.send('⏸️ تم ايقاف الأغنية مؤقتاً.');
+        } catch {
+            return message.reply('❌ حدث خطأ أثناء إيقاف الأغنية.');
+        }
+    }
+
+    // 4. أمر الإكمال (إكمال)
+    else if (text === 'إكمال') {
+        const queue = distube.getQueue(message.guild.id);
+        if (!queue) return message.reply('❌ البوت مو شغال!');
+        try {
+            queue.resume();
+            return message.channel.send('▶️ تم استكمال تشغيل الأغنية.');
+        } catch {
+            return message.reply('❌ الأغنية شغالة أساساً أو لا يمكن استكمالها.');
+        }
+    }
+
+    // 5. أمر التكرار (تكرار)
+    else if (text === 'تكرار') {
+        const queue = distube.getQueue(message.guild.id);
+        if (!queue) return message.reply('❌ البوت مو شغال!');
+        try {
+            const mode = queue.toggleRepeatMode();
+            return message.channel.send(`🔁 وضع التكرار صار: ${mode ? (mode === 2 ? 'القائمة بالكامل' : 'الأغنية الحالية') : 'مطفأ'}`);
+        } catch {
+            return message.reply('❌ ما قدرت أغير وضع التكرار.');
         }
     }
 });
 
-// إشعارات التشغيل التلقائية في الشات
 distube.on('playSong', (queue, song) => {
     queue.textChannel.send(`▶️ شغال الآن: **${song.name}**`);
 });
