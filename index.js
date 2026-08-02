@@ -22,17 +22,17 @@ const client = new Client({
     ]
 });
 
-// سيرفرات Lavalink عامة ومستقرة
+// سيرفرات Lavalink محدثة ومستقرة للاتصال السحابي
 const Nodes = [
     {
         name: 'Node-1',
-        url: 'lava.darrennathanael.com:443',
-        auth: 'darren',
+        url: 'lavalink.eu.org:443',
+        auth: 'youshallnotpass',
         secure: true
     },
     {
         name: 'Node-2',
-        url: 'lavalink.serenity.gg:443',
+        url: 'lava.projectlunar.pw:443',
         auth: 'youshallnotpass',
         secure: true
     }
@@ -81,7 +81,6 @@ client.on('messageCreate', async (message) => {
                     deaf: true
                 });
             } else {
-                // إذا البوت موجود مسبقاً، يغير رُميته للروم اللي انت فيه حالياً
                 if (player.voiceId !== voiceChannel.id) {
                     player.setVoiceChannel(voiceChannel.id);
                 }
