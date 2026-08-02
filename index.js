@@ -1,8 +1,5 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { DisTube } = require('distube');
-const { YtDlpPlugin } = require('@distube/yt-dlp');
-const { SoundCloudPlugin } = require('@distube/soundcloud');
-const { SpotifyPlugin } = require('@distube/spotify');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
@@ -24,16 +21,10 @@ const client = new Client({
     ]
 });
 
-// تفعيل كل الإضافات (يوتيوب، ساوند كلاود، سبوتيفاي) معاً
 const distube = new DisTube(client, {
     emitNewSongOnly: true,
     savePreviousSongs: false,
-    nsfw: true,
-    plugins: [
-        new YtDlpPlugin(),
-        new SoundCloudPlugin(),
-        new SpotifyPlugin()
-    ]
+    nsfw: true
 });
 
 client.on('ready', () => {
@@ -118,7 +109,7 @@ client.on('messageCreate', async (message) => {
 });
 
 distube.on('playSong', (queue, song) => {
-    queue.textChannel.send(`▶️ شغال الآن: **${song.name}** (${song.source})`);
+    queue.textChannel.send(`▶️ شغال الآن: **${song.name}**`);
 });
 
 client.login(TOKEN);
