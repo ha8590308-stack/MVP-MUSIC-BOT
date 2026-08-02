@@ -1,5 +1,6 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { Player } = require('discord-player');
+const { YoutubeExtractor } = require('@discord-player/extractor');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
@@ -22,6 +23,13 @@ const client = new Client({
 });
 
 const player = new Player(client);
+
+// استخراج الصوت بدقة لضمان عدم فشل البحث
+async function initPlayer() {
+    await player.extractors.loadDefault((ext) => ext !== 'YouTube');
+    await player.extractors.register(YoutubeExtractor, {});
+}
+initPlayer();
 
 client.on('ready', () => {
     console.log(`✅ تم تسجيل الدخول بنجاح باسم: ${client.user.tag}`);
@@ -60,15 +68,15 @@ client.on('messageCreate', async (message) => {
                 if (!queue.connection) await queue.connect(voiceChannel);
             } catch {
                 queue.delete();
-                return searchingMsg.edit('❌ تعذر الانصمام للروم الصوتي!');
+                return searchingMsg.edit('❌ تعذر الانضمام للروم الصوتي!');
             }
 
             const result = await player.search(query, {
                 requestedBy: message.author
             });
 
-            if (!result.hasTracks()) {
-                return searchingMsg.edit('❌ لم يتم العثور على نتائج!');
+            if (!result || !result.tracks.length) {
+                return searchingMsg.edit('❌ لم يتم العثور على نتائج، جرب كتابة اسم فنان أو رابط آخر!');
             }
 
             queue.addTrack(result.tracks[0]);
