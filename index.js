@@ -3,8 +3,10 @@ const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerSta
 const play = require('play-dl');
 
 // ================= [ ضع بياناتك هنا ] =================
-const TOKEN = 'MTUzMzQxMTI5ODU3NzA4ODYwNA.GGQmNo.ob1dFL8nvvah3dssdo9RkuEEY3SvTLPwMBAZuw';
-const ALLOWED_CHANNEL_ID = 'https://discord.com/channels/1527850272448184452/1527850274511917251';
+const TOKEN = process.env.TOKEN;
+
+const ALLOWED_CHANNEL_ID = '1527850274511917251';
+
 // ========================================================
 
 const client = new Client({
