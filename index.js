@@ -3,7 +3,8 @@ const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerSta
 const play = require('play-dl');
 const http = require('http');
 
-const TOKEN = process.env.TOKEN || "MTUzMzQxMTI5ODU3NzA4ODYwNA.GSfvcP.sCYKUAZ92Ee90V0nliYugWf4nrpXuMEETDmhUw";
+const TOKEN = process.env.TOKEN;
+
 
 const ALLOWED_CHANNEL_ID = '1527850274511917251';
 
