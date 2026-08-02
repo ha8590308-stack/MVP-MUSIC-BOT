@@ -4,6 +4,6 @@
   "main": "index.js",
   "dependencies": {
     "discord.js": "^14.14.1",
-    "discord-player": "^6.6.0"
+    "distube": "^4.1.2"
   }
 }
