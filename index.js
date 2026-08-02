@@ -69,7 +69,6 @@ client.on('messageCreate', async (message) => {
                 return searchingMsg.edit('❌ تعذر الانضمام للروم الصوتي!');
             }
 
-            // البحث المباشر مع تحديد محرك يوتيوب صراحةً
             const result = await player.search(query, {
                 requestedBy: message.author,
                 searchEngine: 'youtubeSearch'
@@ -86,7 +85,7 @@ client.on('messageCreate', async (message) => {
 
         } catch (error) {
             console.error("Execution Error:", error);
-            if, (searchingMsg) {
+            if (searchingMsg) {
                 searchingMsg.edit('❌ حدث خطأ أثناء التشغيل، جرب مرة أخرى!');
             }
         }
