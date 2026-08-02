@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits } = require('discord.js');
-const { Player, QueryType } = require('discord-player');
+const { DisTube } = require('distube');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
@@ -21,7 +21,11 @@ const client = new Client({
     ]
 });
 
-const player = new Player(client);
+const distube = new DisTube(client, {
+    emitNewSongOnly: true,
+    savePreviousSongs: false,
+    nsfw: true
+});
 
 client.on('ready', () => {
     console.log(`✅ تم تسجيل الدخول بنجاح باسم: ${client.user.tag}`);
@@ -40,57 +44,29 @@ client.on('messageCreate', async (message) => {
         }
 
         const query = text.slice(2).trim();
-        if (!query) return message.reply('❌ اكتب اسم الأغنية بعد حرف ش!');
-
-        let searchingMsg = await message.reply(`🔎 جاري البحث والتشغيل...`);
+        if (!query) return message.reply('❌ اكتب اسم الأغنية أو الرابط بعد حرف ش!');
 
         try {
-            const queue = player.nodes.create(message.guild, {
-                metadata: {
-                    channel: message.channel
-                },
-                leaveOnEmpty: true,
-                leaveOnEmptyCooldown: 30000,
-                leaveOnEnd: true,
-                leaveOnEndCooldown: 30000,
-                selfDeaf: true
+            await distube.play(voiceChannel, query, {
+                textChannel: message.channel,
+                member: message.member
             });
-
-            try {
-                if (!queue.connection) await queue.connect(voiceChannel);
-            } catch {
-                queue.delete();
-                return searchingMsg.edit('❌ تعذر الانضمام للروم الصوتي!');
-            }
-
-            // البحث المباشر عبر ساوند كلاود لتجنب حظر يوتيوب نهائياً
-            const result = await player.search(query, {
-                requestedBy: message.author,
-                searchEngine: QueryType.SOUNDCLOUD_SEARCH
-            });
-
-            if (!result || !result.tracks.length) {
-                return searchingMsg.edit('❌ لم يتم العثور على نتائج!');
-            }
-
-            queue.addTrack(result.tracks[0]);
-            if (!queue.isPlaying()) await queue.node.play();
-
-            return searchingMsg.edit(`▶️ شغال الآن: **${result.tracks[0].title}**`);
-
+            return message.reply(`🔎 جاري البحث والتشغيل...`);
         } catch (error) {
-            console.error("Execution Error:", error);
-            if (searchingMsg) {
-                searchingMsg.edit('❌ حدث خطأ أثناء التشغيل، جرب مرة أخرى!');
-            }
+            console.error(error);
+            return message.reply('❌ حدث خطأ، تأكد من صحة الرابط أو الاسم!');
         }
     }
 
     else if (text === 'سكيب') {
-        const queue = player.nodes.get(message.guild.id);
-        if (queue && queue.isPlaying()) {
-            queue.node.stop();
-            return message.channel.send('🛑 تم تخطي المقطع.');
+        const queue = distube.getQueue(message.guild.id);
+        if (queue) {
+            try {
+                await queue.skip();
+                return message.channel.send('🛑 تم تخطي المقطع.');
+            } catch {
+                return message.reply('❌ ما فيه أغنية تالية لتخطيها!');
+            }
         } else {
             return message.reply('❌ البوت مو شغال أساساً!');
         }
