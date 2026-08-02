@@ -1,11 +1,18 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
-const ytdl = require('@distube/ytdl-core');
 const play = require('play-dl');
 const http = require('http');
 
-const TOKEN = process.env.TOKEN;
+const TOKEN = process.env.TOKEN || "MTUzMzQxMTI5ODU3NzA4ODYwNA.GSfvcP.sCYKUAZ92Ee90V0nliYugWf4nrpXuMEETDmhUw";
+
 const ALLOWED_CHANNEL_ID = '1527850274511917251';
+
+// سيرفر HTTP بسيط جداً لإرضاء Render في الخطة المجانية
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.write('MVP Bot is Running Free!');
+    res.end();
+}).listen(process.env.PORT || 10000);
 
 const client = new Client({
     intents: [
@@ -38,25 +45,24 @@ client.on('messageCreate', async (message) => {
         }
 
         const query = text.slice(2).trim();
-        if (!query) return message.reply('❌ اكتب اسم الأغنية أو الرابط بعد حرف ش!');
+        if (!query) return message.reply('❌ اكتب اسم الأغنية بعد حرف ش!');
 
+        let searchingMsg;
         try {
-            const searchingMsg = await message.reply(`🔎 جاري البحث عن: **${query}**...`);
+            searchingMsg = await message.reply(`🔎 جاري البحث عن: **${query}**...`);
 
-            let url = query;
-            let title = query;
-
-            if (!play.yt_validate(query)) {
-                let searchResult = await play.search(query, { limit: 1 });
-                if (!searchResult || searchResult.length === 0) {
-                    return searchingMsg.edit('❌ ما لقيت المقطع!');
-                }
-                url = searchResult[0].url;
-                title = searchResult[0].title;
+            const ytInfo = await play.search(query, { limit: 1 });
+            if (!ytInfo || ytInfo.length === 0) {
+                return searchingMsg.edit('❌ لم يتم العثور على المقطع!');
             }
 
-            currentUrl = url;
+            const video = ytInfo[0];
+            currentUrl = video.url;
             isLooping = false;
+
+            const stream = await play.stream(video.url, {
+                discordPlayerCompatibility: true
+            });
 
             if (currentConnection) {
                 currentConnection.destroy();
@@ -70,30 +76,22 @@ client.on('messageCreate', async (message) => {
             });
 
             currentPlayer = createAudioPlayer();
+            const resource = createAudioResource(stream.stream, { inputType: stream.type });
 
-            // إعداد البث المباشر لتجاوز حظر Render
-            const stream = ytdl(url, {
-                filter: 'audioonly',
-                quality: 'highestaudio',
-                highWaterMark: 1 << 25,
-                requestOptions: {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                    }
-                }
-            });
-
-            const resource = createAudioResource(stream);
             currentPlayer.play(resource);
             currentConnection.subscribe(currentPlayer);
 
-            searchingMsg.edit(`▶️ شغال الآن: **${title}**`);
+            await searchingMsg.edit(`▶️ شغال الآن: **${video.title}**`);
 
-            currentPlayer.on(AudioPlayerStatus.Idle, () => {
+            currentPlayer.on(AudioPlayerStatus.Idle, async () => {
                 if (isLooping && currentUrl) {
-                    const nextStream = ytdl(currentUrl, { filter: 'audioonly', highWaterMark: 1 << 25 });
-                    const nextResource = createAudioResource(nextStream);
-                    currentPlayer.play(nextResource);
+                    try {
+                        const nextStream = await play.stream(currentUrl, { discordPlayerCompatibility: true });
+                        const nextResource = createAudioResource(nextStream.stream, { inputType: nextStream.type });
+                        currentPlayer.play(nextResource);
+                    } catch (e) {
+                        console.error("Looping Error:", e);
+                    }
                 } else {
                     if (currentConnection) {
                         currentConnection.destroy();
@@ -109,7 +107,9 @@ client.on('messageCreate', async (message) => {
 
         } catch (error) {
             console.error("General Error:", error);
-            message.channel.send('❌ تعذر تشغيل المقطع، جرب اسم ثاني أو رابط مباشر!');
+            if (searchingMsg) {
+                searchingMsg.edit('❌ تعذر تشغيل المقطع حالياً، جرب البحث باسم آخر!');
+            }
         }
     }
 
@@ -135,10 +135,5 @@ client.on('messageCreate', async (message) => {
         return message.channel.send(isLooping ? '🔄 تم تفعيل التكرار!' : '⏹️ تم إلغاء التكرار!');
     }
 });
-
-http.createServer((req, res) => {
-    res.write('MVP Bot Online');
-    res.end();
-}).listen(process.env.PORT || 3000);
 
 client.login(TOKEN);
