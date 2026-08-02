@@ -1,6 +1,5 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { Player } = require('discord-player');
-const { DefaultExtractors } = require('@discord-player/extractor');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
@@ -23,11 +22,6 @@ const client = new Client({
 });
 
 const player = new Player(client);
-
-async function init() {
-    await player.extractors.loadMulti(DefaultExtractors);
-}
-init();
 
 client.on('ready', () => {
     console.log(`✅ تم تسجيل الدخول بنجاح باسم: ${client.user.tag}`);
@@ -70,12 +64,11 @@ client.on('messageCreate', async (message) => {
             }
 
             const result = await player.search(query, {
-                requestedBy: message.author,
-                searchEngine: 'youtubeSearch'
+                requestedBy: message.author
             });
 
             if (!result || !result.tracks.length) {
-                return searchingMsg.edit('❌ لم يتم العثور على نتائج، جرب كتابة اسم الفنان مع الأغنية!');
+                return searchingMsg.edit('❌ لم يتم العثور على نتائج، جرب رابط يوتيوب مباشر!');
             }
 
             queue.addTrack(result.tracks[0]);
