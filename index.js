@@ -4,9 +4,7 @@ const ytdl = require('@distube/ytdl-core');
 const play = require('play-dl');
 const http = require('http');
 
-// ⚠️ حط التوكن الجديد هنا بين العلامتين
 const TOKEN = process.env.TOKEN;
- '';
 const ALLOWED_CHANNEL_ID = '1527850274511917251';
 
 const client = new Client({
@@ -33,7 +31,6 @@ client.on('messageCreate', async (message) => {
 
     const text = message.content.trim();
 
-    // 1️⃣ أمر التشغيل (ش)
     if (text.startsWith('ش ')) {
         const voiceChannel = message.member.voice.channel;
         if (!voiceChannel) {
@@ -49,7 +46,6 @@ client.on('messageCreate', async (message) => {
             let url = query;
             let title = query;
 
-            // إذا ما كان رابط مباشر، نبحث عنه
             if (!play.yt_validate(query)) {
                 let searchResult = await play.search(query, { limit: 1 });
                 if (!searchResult || searchResult.length === 0) {
@@ -75,10 +71,16 @@ client.on('messageCreate', async (message) => {
 
             currentPlayer = createAudioPlayer();
 
+            // إعداد البث المباشر لتجاوز حظر Render
             const stream = ytdl(url, {
                 filter: 'audioonly',
+                quality: 'highestaudio',
                 highWaterMark: 1 << 25,
-                quality: 'highestaudio'
+                requestOptions: {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    }
+                }
             });
 
             const resource = createAudioResource(stream);
@@ -102,17 +104,15 @@ client.on('messageCreate', async (message) => {
             });
 
             currentPlayer.on('error', err => {
-                console.error(err);
-                message.channel.send('❌ حدث خطأ أثناء تشغيل الصوت!');
+                console.error("Audio Player Error:", err);
             });
 
         } catch (error) {
-            console.error(error);
-            message.channel.send('❌ تعذر التشغيل، حاول مجدداً!');
+            console.error("General Error:", error);
+            message.channel.send('❌ تعذر تشغيل المقطع، جرب اسم ثاني أو رابط مباشر!');
         }
     }
 
-    // 2️⃣ أمر السكيب
     else if (text === 'سكيب') {
         if (currentConnection || currentPlayer) {
             isLooping = false;
@@ -127,7 +127,6 @@ client.on('messageCreate', async (message) => {
         }
     }
 
-    // 3️⃣ أمر التكرار
     else if (text === 'كرر') {
         if (!currentPlayer || !currentUrl) {
             return message.reply('❌ ما فيه شيء شغال حالياً!');
@@ -143,4 +142,3 @@ http.createServer((req, res) => {
 }).listen(process.env.PORT || 3000);
 
 client.login(TOKEN);
-
