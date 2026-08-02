@@ -5,8 +5,7 @@
   "dependencies": {
     "discord.js": "^14.14.1",
     "@discordjs/voice": "^0.17.0",
-    "@distube/ytdl-core": "latest",
-    "yt-search": "^2.10.4",
+    "play-dl": "^1.9.7",
     "libsodium-wrappers": "^0.7.13",
     "ffmpeg-static": "^5.2.0"
   }
