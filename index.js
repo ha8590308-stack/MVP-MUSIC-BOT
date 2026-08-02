@@ -1,6 +1,6 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { Player } = require('discord-player');
-const { YoutubeExtractor } = require('@discord-player/extractor');
+const { DefaultExtractors } = require('@discord-player/extractor');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
@@ -24,12 +24,10 @@ const client = new Client({
 
 const player = new Player(client);
 
-// استخراج الصوت بدقة لضمان عدم فشل البحث
-async function initPlayer() {
-    await player.extractors.loadDefault((ext) => ext !== 'YouTube');
-    await player.extractors.register(YoutubeExtractor, {});
+async function init() {
+    await player.extractors.loadMulti(DefaultExtractors);
 }
-initPlayer();
+init();
 
 client.on('ready', () => {
     console.log(`✅ تم تسجيل الدخول بنجاح باسم: ${client.user.tag}`);
@@ -71,12 +69,14 @@ client.on('messageCreate', async (message) => {
                 return searchingMsg.edit('❌ تعذر الانضمام للروم الصوتي!');
             }
 
+            // البحث المباشر مع تحديد محرك يوتيوب صراحةً
             const result = await player.search(query, {
-                requestedBy: message.author
+                requestedBy: message.author,
+                searchEngine: 'youtubeSearch'
             });
 
             if (!result || !result.tracks.length) {
-                return searchingMsg.edit('❌ لم يتم العثور على نتائج، جرب كتابة اسم فنان أو رابط آخر!');
+                return searchingMsg.edit('❌ لم يتم العثور على نتائج، جرب كتابة اسم الفنان مع الأغنية!');
             }
 
             queue.addTrack(result.tracks[0]);
@@ -86,7 +86,7 @@ client.on('messageCreate', async (message) => {
 
         } catch (error) {
             console.error("Execution Error:", error);
-            if (searchingMsg) {
+            if, (searchingMsg) {
                 searchingMsg.edit('❌ حدث خطأ أثناء التشغيل، جرب مرة أخرى!');
             }
         }
