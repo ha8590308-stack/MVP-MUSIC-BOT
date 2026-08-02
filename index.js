@@ -1,13 +1,12 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, enterState } = require('@discordjs/voice');
-const ytdl = require('@distube/ytdl-core');
-const ytSearch = require('yt-search');
+const play = require('play-dl');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
 const ALLOWED_CHANNEL_ID = '1527850274511917251';
 
-// سيرفر HTTP لإبقاء الخدمة شغال في Render المجاني 24/7
+// سيرفر إبقاء الخدمة متصلة 24/7 على Render
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.write('MVP Music Bot Online');
@@ -45,38 +44,27 @@ client.on('messageCreate', async (message) => {
             return message.reply('❌ لازم تكون داخل روم صوتي أولاً!');
         }
 
-        let input = text.slice(2).trim();
-        if (!input) return message.reply('❌ اكتب اسم الأغنية أو الرابط بعد حرف ش!');
+        let query = text.slice(2).trim();
+        if (!query) return message.reply('❌ اكتب اسم الأغنية بعد حرف ش!');
 
-        let searchingMsg = await message.reply(`🔎 جاري التحضير والبحث...`);
+        let searchingMsg = await message.reply(`🔎 جاري البحث على SoundCloud عن: **${query}**...`);
 
         try {
-            let targetUrl = input;
-            let trackTitle = input;
+            // البحث المباشر في ساوند كلاود لتفادي حظر يوتيوب
+            const searchResults = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
 
-            // إذا كان المدخل نص عادي وليس رابط، يبحث ويستخرج أول فيديو
-            if (!input.startsWith('http://') && !input.startsWith('https://')) {
-                const searchResult = await ytSearch(input);
-                if (!searchResult || !searchResult.videos.length) {
-                    return searchingMsg.edit('❌ لم يتم العثور على نتائج للبحث!');
-                }
-                targetUrl = searchResult.videos[0].url;
-                trackTitle = searchResult.videos[0].title;
+            if (!searchResults || searchResults.length === 0) {
+                return searchingMsg.edit('❌ لم يتم العثور على نتائج في SoundCloud!');
             }
 
-            // استخراج ستريم الصوت مباشرة بأحدث إصدار ytdl
-            const stream = ytdl(targetUrl, {
-                filter: 'audioonly',
-                highWaterMark: 1 << 25,
-                quality: 'highestaudio',
-                dlChunkSize: 0
-            });
+            const track = searchResults[0];
+            const streamData = await play.stream(track.url);
 
             if (currentConnection) {
                 try { currentConnection.destroy(); } catch (e) {}
             }
 
-            // الانضمام للروم الصوتي
+            // دخول الروم الصوتي
             currentConnection = joinVoiceChannel({
                 channelId: voiceChannel.id,
                 guildId: message.guild.id,
@@ -87,12 +75,12 @@ client.on('messageCreate', async (message) => {
             await enterState(currentConnection, VoiceConnectionStatus.Ready, 15_000);
 
             currentPlayer = createAudioPlayer();
-            const resource = createAudioResource(stream);
+            const resource = createAudioResource(streamData.stream, { inputType: streamData.type });
 
             currentPlayer.play(resource);
             currentConnection.subscribe(currentPlayer);
 
-            await searchingMsg.edit(`▶️ شغال الآن: **${trackTitle}**`);
+            await searchingMsg.edit(`▶️ شغال الآن: **${track.title}**`);
 
             currentPlayer.on(AudioPlayerStatus.Idle, () => {
                 cleanupConnection();
@@ -107,7 +95,7 @@ client.on('messageCreate', async (message) => {
             console.error("Execution Error:", error);
             cleanupConnection();
             if (searchingMsg) {
-                searchingMsg.edit('❌ تعذر تشغيل المقطع، جرب رابط آخر أو اسم مختلف!');
+                searchingMsg.edit('❌ تعذر تشغيل المقطع، حاول مرة أخرى!');
             }
         }
     }
