@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits } = require('discord.js');
-const { Player } = require('discord-player');
+const { Player, QueryType } = require('discord-player');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
@@ -40,7 +40,7 @@ client.on('messageCreate', async (message) => {
         }
 
         const query = text.slice(2).trim();
-        if (!query) return message.reply('❌ اكتب اسم الأغنية أو الرابط بعد حرف ش!');
+        if (!query) return message.reply('❌ اكتب اسم الأغنية بعد حرف ش!');
 
         let searchingMsg = await message.reply(`🔎 جاري البحث والتشغيل...`);
 
@@ -63,12 +63,14 @@ client.on('messageCreate', async (message) => {
                 return searchingMsg.edit('❌ تعذر الانضمام للروم الصوتي!');
             }
 
+            // البحث المباشر عبر ساوند كلاود لتجنب حظر يوتيوب نهائياً
             const result = await player.search(query, {
-                requestedBy: message.author
+                requestedBy: message.author,
+                searchEngine: QueryType.SOUNDCLOUD_SEARCH
             });
 
             if (!result || !result.tracks.length) {
-                return searchingMsg.edit('❌ لم يتم العثور على نتائج، جرب رابط يوتيوب مباشر!');
+                return searchingMsg.edit('❌ لم يتم العثور على نتائج!');
             }
 
             queue.addTrack(result.tracks[0]);
