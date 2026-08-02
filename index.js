@@ -1,15 +1,16 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, enterState } = require('@discordjs/voice');
-const play = require('play-dl');
+const { YTDLP } = require('@distube/yt-dlp');
+const ytSearch = require('yt-search');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
 const ALLOWED_CHANNEL_ID = '1527850274511917251';
 
-// 1. سيرفر HTTP لإبقاء الخدمة شغال في Render المجاني
+// سيرفر إبقاء البوت متصلاً 24/7 على Render
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.write('MVP Music Bot is Fully Alive & Protected!');
+    res.write('MVP Music Bot Online');
     res.end();
 }).listen(process.env.PORT || 10000);
 
@@ -29,13 +30,8 @@ client.on('ready', () => {
     console.log(`✅ تم تسجيل الدخول بنجاح: ${client.user.tag}`);
 });
 
-// معالجة الأخطاء العامة لمنع السيرفر من الإغلاق (Crash Protection)
-process.on('unhandledRejection', error => {
-    console.error('Unhandled promise rejection:', error);
-});
-process.on('uncaughtException', error => {
-    console.error('Uncaught exception:', error);
-});
+process.on('unhandledRejection', error => console.error('Unhandled Promise:', error));
+process.on('uncaughtException', error => console.error('Uncaught Exception:', error));
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
@@ -49,45 +45,37 @@ client.on('messageCreate', async (message) => {
             return message.reply('❌ لازم تكون داخل روم صوتي أولاً!');
         }
 
-        const query = text.slice(2).trim();
-        if (!query) return message.reply('❌ اكتب اسم الأغنية بعد حرف ش!');
+        let input = text.slice(2).trim();
+        if (!input) return message.reply('❌ اكتب اسم الأغنية أو الرابط بعد حرف ش!');
 
-        let searchingMsg = await message.reply(`🔎 جاري البحث عن: **${query}**...`);
+        let searchingMsg = await message.reply(`🔎 جاري التحضير والبحث...`);
 
         try {
-            let stream = null;
-            let title = query;
+            let targetUrl = input;
+            let trackTitle = input;
 
-            // الخطة A: البحث في SoundCloud (الأسرع والأضمن من الحظر)
-            try {
-                const scResult = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
-                if (scResult && scResult.length > 0) {
-                    stream = await play.stream(scResult[0].url);
-                    title = scResult[0].name;
+            // إذا لم يكن المدخل رابط مباشر من يوتيوب، نجري بحثاً سريعا
+            if (!input.startsWith('http://') && !input.startsWith('https://')) {
+                const searchResult = await ytSearch(input);
+                if (!searchResult || !searchResult.videos.length) {
+                    return searchingMsg.edit('❌ لم يتم العثور على نتائج لهذا البحث!');
                 }
-            } catch (scErr) {
-                console.log("SoundCloud Fetch Failed, falling back to YouTube...", scErr);
+                targetUrl = searchResult.videos[0].url;
+                trackTitle = searchResult.videos[0].title;
             }
 
-            // الخطة B: إذا فشل SoundCloud تجربة YouTube
-            if (!stream) {
-                const ytResult = await play.search(query, { limit: 1 });
-                if (ytResult && ytResult.length > 0) {
-                    stream = await play.stream(ytResult[0].url, { discordPlayerCompatibility: true });
-                    title = ytResult[0].title;
-                }
-            }
+            // استخدام yt-dlp للالتفاف على حظر يوتيوب واستخراج ستريم الصوت مباشرة
+            const ytdlp = new YTDLP();
+            const stream = ytdlp.stream(targetUrl, {
+                filter: 'audioonly',
+                quality: 'highestaudio'
+            });
 
-            if (!stream) {
-                return searchingMsg.edit('❌ تعذر العثور على المقطع في المصادر المتاحة!');
-            }
-
-            // إغلاق الاتصال القديم إن وجد
             if (currentConnection) {
                 try { currentConnection.destroy(); } catch (e) {}
             }
 
-            // الاتصال بالروم الصوتي
+            // الانضمام للروم الصوتي
             currentConnection = joinVoiceChannel({
                 channelId: voiceChannel.id,
                 guildId: message.guild.id,
@@ -95,31 +83,30 @@ client.on('messageCreate', async (message) => {
                 selfDeaf: true
             });
 
-            // التأكد من استقرار الاتصال بالروم
             await enterState(currentConnection, VoiceConnectionStatus.Ready, 15_000);
 
             currentPlayer = createAudioPlayer();
-            const resource = createAudioResource(stream.stream, { inputType: stream.type });
+            const resource = createAudioResource(stream);
 
             currentPlayer.play(resource);
             currentConnection.subscribe(currentPlayer);
 
-            await searchingMsg.edit(`▶️ شغال الآن: **${title}**`);
+            await searchingMsg.edit(`▶️ شغال الآن: **${trackTitle}**`);
 
             currentPlayer.on(AudioPlayerStatus.Idle, () => {
                 cleanupConnection();
             });
 
             currentPlayer.on('error', err => {
-                console.error("Audio Player Internal Error:", err);
+                console.error("Audio Player Error:", err);
                 cleanupConnection();
             });
 
         } catch (error) {
-            console.error("Main Command Error:", error);
+            console.error("Execution Error:", error);
             cleanupConnection();
             if (searchingMsg) {
-                searchingMsg.edit('❌ تعذر التشغيل، جرب كتابة اسم المقطع بشكل مختلف أو أوضح!');
+                searchingMsg.edit('❌ تعذر تشغيل المقطع، تأكد من صحة الرابط أو الاسم!');
             }
         }
     }
