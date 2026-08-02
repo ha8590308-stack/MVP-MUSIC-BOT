@@ -1,15 +1,15 @@
 const { Client, GatewayIntentBits } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, enterState } = require('@discordjs/voice');
-const play = require('play-dl');
+const { Connectors } = require('shoukaku');
+const { Kazagumo } = require('kazagumo');
 const http = require('http');
 
 const TOKEN = process.env.TOKEN;
 const ALLOWED_CHANNEL_ID = '1527850274511917251';
 
-// سيرفر إبقاء الخدمة متصلة 24/7 على Render
+// سيرفر إبقاء البوت أونلاين على Render
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.write('MVP Music Bot Online');
+    res.write('MVP Music Bot Online via Lavalink');
     res.end();
 }).listen(process.env.PORT || 10000);
 
@@ -22,15 +22,36 @@ const client = new Client({
     ]
 });
 
-let currentConnection = null;
-let currentPlayer = null;
+// سيرفرات Lavalink عامة ومجانية لتجاوز حظر يوتيوب
+const Nodes = [
+    {
+        name: 'Public-Node-1',
+        url: 'lavalink.vostub.ru:443',
+        auth: 'youshallnotpass',
+        secure: true
+    },
+    {
+        name: 'Public-Node-2',
+        url: 'lava.link:80',
+        auth: 'youshallnotpass',
+        secure: false
+    }
+];
+
+const kazagumo = new Kazagumo({
+    defaultSearchEngine: 'youtube',
+    send: (guildId, payload) => {
+        const guild = client.guilds.cache.get(guildId);
+        if (guild) guild.shard.send(payload);
+    }
+}, new Connectors.DiscordJS(client), Nodes);
 
 client.on('ready', () => {
-    console.log(`✅ البوت جاهز وأونلاين باسم: ${client.user.tag}`);
+    console.log(`✅ تم تسجيل الدخول بنجاح باسم: ${client.user.tag}`);
 });
 
-process.on('unhandledRejection', error => console.error('Unhandled Promise:', error));
-process.on('uncaughtException', error => console.error('Uncaught Exception:', error));
+kazagumo.shoukaku.on('ready', (name) => console.log(`✅ متصل بسيرفر الصوت: ${name}`));
+kazagumo.shoukaku.on('error', (name, error) => console.error(`❌ خطأ في سيرفر الصوت ${name}:`, error));
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
@@ -44,81 +65,56 @@ client.on('messageCreate', async (message) => {
             return message.reply('❌ لازم تكون داخل روم صوتي أولاً!');
         }
 
-        let query = text.slice(2).trim();
-        if (!query) return message.reply('❌ اكتب اسم الأغنية بعد حرف ش!');
+        const query = text.slice(2).trim();
+        if (!query) return message.reply('❌ اكتب اسم الأغنية أو الرابط بعد حرف ش!');
 
-        let searchingMsg = await message.reply(`🔎 جاري البحث على SoundCloud عن: **${query}**...`);
+        let searchingMsg = await message.reply(`🔎 جاري البحث والتشغيل عبر سيرفر الصوت...`);
 
         try {
-            // البحث المباشر في ساوند كلاود لتفادي حظر يوتيوب
-            const searchResults = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
+            let player = kazagumo.players.get(message.guild.id);
 
-            if (!searchResults || searchResults.length === 0) {
-                return searchingMsg.edit('❌ لم يتم العثور على نتائج في SoundCloud!');
+            if (!player) {
+                player = await kazagumo.createPlayer({
+                    guildId: message.guild.id,
+                    textId: message.channel.id,
+                    voiceId: voiceChannel.id,
+                    deaf: true
+                });
             }
 
-            const track = searchResults[0];
-            const streamData = await play.stream(track.url);
+            let result = await kazagumo.search(query, { requester: message.author });
 
-            if (currentConnection) {
-                try { currentConnection.destroy(); } catch (e) {}
+            if (!result.tracks.length) {
+                return searchingMsg.edit('❌ لم يتم العثور على نتائج!');
             }
 
-            // دخول الروم الصوتي
-            currentConnection = joinVoiceChannel({
-                channelId: voiceChannel.id,
-                guildId: message.guild.id,
-                adapterCreator: message.guild.voiceAdapterCreator,
-                selfDeaf: true
-            });
-
-            await enterState(currentConnection, VoiceConnectionStatus.Ready, 15_000);
-
-            currentPlayer = createAudioPlayer();
-            const resource = createAudioResource(streamData.stream, { inputType: streamData.type });
-
-            currentPlayer.play(resource);
-            currentConnection.subscribe(currentPlayer);
-
-            await searchingMsg.edit(`▶️ شغال الآن: **${track.title}**`);
-
-            currentPlayer.on(AudioPlayerStatus.Idle, () => {
-                cleanupConnection();
-            });
-
-            currentPlayer.on('error', err => {
-                console.error("Audio Player Error:", err);
-                cleanupConnection();
-            });
+            if (result.type === 'PLAYLIST') {
+                for (let track of result.tracks) player.queue.add(track);
+                if (!player.playing && !player.paused) player.play();
+                return searchingMsg.edit(`▶️ تم إضافة القائمة (**${result.tracks.length}** مقطع).`);
+            } else {
+                player.queue.add(result.tracks[0]);
+                if (!player.playing && !player.paused) player.play();
+                return searchingMsg.edit(`▶️ شغال الآن: **${result.tracks[0].title}**`);
+            }
 
         } catch (error) {
             console.error("Execution Error:", error);
-            cleanupConnection();
             if (searchingMsg) {
-                searchingMsg.edit('❌ تعذر تشغيل المقطع، حاول مرة أخرى!');
+                searchingMsg.edit('❌ تعذر الاتصال بسيرفر الصوت، جرب بعد ثوانٍ!');
             }
         }
     }
 
     else if (text === 'سكيب') {
-        if (currentConnection || currentPlayer) {
-            cleanupConnection();
+        const player = kazagumo.players.get(message.guild.id);
+        if (player) {
+            player.destroy();
             return message.channel.send('🛑 تم الإيقاف والخروج.');
         } else {
             return message.reply('❌ البوت مو شغال أساساً!');
         }
     }
 });
-
-function cleanupConnection() {
-    if (currentPlayer) {
-        try { currentPlayer.stop(); } catch (e) {}
-        currentPlayer = null;
-    }
-    if (currentConnection) {
-        try { currentConnection.destroy(); } catch (e) {}
-        currentConnection = null;
-    }
-}
 
 client.login(TOKEN);
