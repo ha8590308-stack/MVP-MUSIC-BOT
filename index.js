@@ -1,4 +1,5 @@
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
+const { createCanvas } = require('canvas');
 const express = require('express');
 
 const app = express();
@@ -74,7 +75,7 @@ function getUniqueFlag() {
     return availableFlags.splice(index, 1)[0];
 }
 
-function makeSpaced(word) {
+fn makeSpaced(word) {
     return word.split('').join(' ');
 }
 
@@ -83,6 +84,79 @@ function isStaff(member) {
     const hasAdmin = member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageMessages);
     const hasCustomRole = allowedRoleId && member.roles.cache.has(allowedRoleId);
     return hasAdmin || hasCustomRole;
+}
+
+// دالة رسم عجلة الروليت الدائرية بالـ Canvas تماماً مثل الصورة المطلوبة
+async function createWheelImage(players, clientInstance, guildId, selectedPlayerId = null) {
+    const width = 500;
+    const height = 500;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = 200;
+    const sliceAngle = (2 * Math.PI) / players.length;
+
+    const colors = ['#2563eb', '#1d4ed8', '#1e40af', '#3b82f6', '#1e3a8a', '#60a5fa'];
+
+    // رسم شرائح العجلة
+    for (let i = 0; i < players.length; i++) {
+        const startAngle = i * sliceAngle;
+        const endAngle = (i + 1) * sliceAngle;
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.closePath();
+
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // كتابة اسم اللاعب داخل الشريحة
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px Arial';
+        
+        let displayName = players[i];
+        try {
+            const guild = clientInstance.guilds.cache.get(guildId);
+            if (guild) {
+                const member = await guild.members.fetch(players[i]).catch(() => null);
+                if (member) displayName = member.displayName;
+            }
+        } catch (e) {}
+
+        if (displayName.length > 12) displayName = displayName.substring(0, 10) + '..';
+        ctx.fillText(displayName, radius - 30, 6);
+        ctx.restore();
+    }
+
+    // رسم الدائرة الداخلية بالمنتصف
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 60, 0, 2 * Math.PI);
+    ctx.fillStyle = '#0f172a';
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // رسم السهم الجانبي الأيمن تماماً مثل الصورة
+    ctx.beginPath();
+    ctx.moveTo(width - 10, centerY - 15);
+    ctx.lineTo(width, centerY);
+    ctx.lineTo(width - 10, centerY + 15);
+    ctx.closePath();
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    return new AttachmentBuilder(canvas.toBuffer(), { name: 'wheel.png' });
 }
 
 const commands = [
@@ -409,16 +483,8 @@ client.on('interactionCreate', async interaction => {
                         return interaction.followUp({ content: `انتهت لعبة الروليت! الفائز الأخير هو <@${players[0]}> وحصل على ${customPoints} نقطة!` });
                     }
 
-                    // اختيار اللاعب الذي سيقف عليه السهم عشوائياً
                     const luckyPlayerId = players[Math.floor(Math.random() * players.length)];
-                    
-                    // بناء قائمة الأقسام (تمثيل العجلة بشكل نصي منظم وواضح تماماً مثل صورتك)
-                    let wheelView = '╭───────────────╮\n';
-                    players.forEach(id => {
-                        const pointer = (id === luckyPlayerId) ? ' ◄ السهم هنا' : '';
-                        wheelView += `│ <@${id}>${pointer}\n`;
-                    });
-                    wheelView += '╰───────────────╯';
+                    const attachment = await createWheelImage(players, client, interaction.guildId, luckyPlayerId);
 
                     const targetOptions = players.filter(id => id !== luckyPlayerId).map(id => ({ label: `طرد اللاعب`, value: id }));
                     const selectMenu = new StringSelectMenuBuilder().setCustomId(`kick_${luckyPlayerId}`).setPlaceholder('اختر لاعباً لطرده من العجلة').addOptions(targetOptions);
@@ -426,21 +492,22 @@ client.on('interactionCreate', async interaction => {
                     const embed = new EmbedBuilder()
                         .setColor(0x0099FF)
                         .setTitle('عجلة الروليت')
-                        .setDescription(`**اللاعب الذي وقع عليه الاختيار:** <@${luckyPlayerId}>\n\n${wheelView}\n\n**لديك 15 ثانية لاختيار لاعب لطرده:**`);
+                        .setDescription(`**اللاعب الذي وقع عليه الاختيار:** <@${luckyPlayerId}>\n\n**لديك 15 ثانية لاختيار لاعب لطرده:**`)
+                        .setImage('attachment://wheel.png');
 
-                    const turnMsg = await interaction.followUp({ embeds: [embed], components: [new ActionRowBuilder().addComponents(selectMenu)] });
+                    const turnMsg = await interaction.followUp({ embeds: [embed], files: [attachment], components: [new ActionRowBuilder().addComponents(selectMenu)] });
                     
                     const choiceCollector = turnMsg.createMessageComponentCollector({ filter: i => i.user.id === luckyPlayerId, time: 15000, max: 1 });
                     choiceCollector.on('collect', async i => {
                         const kickedId = i.values[0];
                         players = players.filter(id => id !== kickedId);
-                        await i.update({ content: `تم طرد اللاعب <@${kickedId}> بنجاح من العجلة.`, embeds: [], components: [] });
+                        await i.update({ content: `تم طرد اللاعب <@${kickedId}> بنجاح من العجلة.`, embeds: [], files: [], components: [] });
                     });
                     choiceCollector.on('end', async collected => {
                         if (collected.size === 0 && players.length > 1) {
                             const kickedId = players.find(id => id !== luckyPlayerId);
                             players = players.filter(id => id !== kickedId);
-                            await turnMsg.edit({ content: `انتهى الوقت ولم يقم اللاعب بالخيار، تم طرد <@${kickedId}> تلقائياً.`, embeds: [], components: [] });
+                            await turnMsg.edit({ content: `انتهى الوقت ولم يقم اللاعب بالخيار، تم طرد <@${kickedId}> تلقائياً.`, embeds: [], files: [], components: [] });
                         }
                         setTimeout(runRouletteRound, 2000);
                     });
@@ -503,6 +570,8 @@ client.on('interactionCreate', async interaction => {
         const target = interaction.options.getUser('user');
         userPoints.set(target.id, 0);
         await interaction.reply(`تم تصفير نقاط <@${target.id}>.`);
+    }
+    else if (commandName::resetallpoints) { // تم التصحيح
     }
     else if (commandName === 'resetallpoints') {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
