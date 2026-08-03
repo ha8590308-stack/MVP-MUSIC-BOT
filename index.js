@@ -97,7 +97,8 @@ async function createWheelImage(players, clientInstance, guildId, selectedPlayer
     const radius = 200;
     const sliceAngle = (2 * Math.PI) / players.length;
 
-    // خلفية دائرية زرقاء بالكامل لضمان عدم ظهور لون أسود
+    // مسح وتعبئة الخلفية باللون الأزرق الصافي بالكامل
+    ctx.clearRect(0, 0, width, height);
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.fillStyle = '#2563eb';
@@ -116,7 +117,7 @@ async function createWheelImage(players, clientInstance, guildId, selectedPlayer
 
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
-        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
         ctx.closePath();
 
         ctx.fillStyle = colors[i % colors.length];
@@ -127,8 +128,11 @@ async function createWheelImage(players, clientInstance, guildId, selectedPlayer
 
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(startAngle + sliceAngle / 2);
+        const midAngle = startAngle + (sliceAngle / 2);
+        ctx.rotate(midAngle);
+
         ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 16px Arial';
         
@@ -142,12 +146,12 @@ async function createWheelImage(players, clientInstance, guildId, selectedPlayer
         } catch (e) {}
 
         if (displayName.length > 12) displayName = displayName.substring(0, 10) + '..';
-        ctx.fillText(displayName, radius - 30, 6);
+        ctx.fillText(displayName, radius - 25, 0);
         ctx.restore();
     }
     ctx.restore();
 
-    // دائرة المنتصف لعرض صورة بروفايل اللاعب
+    // دائرة المنتصف (صورة البروفايل أو لون داكن افتراضي)
     ctx.save();
     ctx.beginPath();
     ctx.arc(centerX, centerY, 60, 0, 2 * Math.PI);
@@ -176,17 +180,17 @@ async function createWheelImage(players, clientInstance, guildId, selectedPlayer
     }
     ctx.restore();
 
-    // إطار دائرة المنتصف
+    // إطار دائرة المنتصف الأبيض
     ctx.beginPath();
     ctx.arc(centerX, centerY, 60, 0, 2 * Math.PI);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // السهم الأيمن باللون الأبيض الواضح
+    // السهم الأبيض الواضح على الجانب الأيمن
     ctx.beginPath();
     ctx.moveTo(width - 5, centerY - 15);
-    ctx.lineTo(width - 25, centerY);
+    ctx.lineTo(width - 28, centerY);
     ctx.lineTo(width - 5, centerY + 15);
     ctx.closePath();
     ctx.fillStyle = '#ffffff';
@@ -443,26 +447,16 @@ client.on('interactionCreate', async interaction => {
             .setTitle('قائمة الأوامر')
             .setColor(0x0099FF)
             .setDescription(
-                '/play\n' +
-                'بدء لعبة جديدة\n\n' +
-                '/stop\n' +
-                'إيقاف اللعبة الحالية\n\n' +
-                '/games\n' +
-                'عرض الألعاب المتوفرة\n\n' +
-                '/points\n' +
-                'عرض النقاط\n\n' +
-                'توب\n' +
-                'عرض صدارة الترتيب\n\n' +
-                'وقف\n' +
-                'إيقاف اللعبة بالأمر النصي\n\n' +
-                '/setrole\n' +
-                'تحديد رول التحكم للمشرفين\n\n' +
-                '/addpoints\n' +
-                'إضافة نقاط لعضو\n\n' +
-                '/resetpoints\n' +
-                'تصفير نقاط عضو\n\n' +
-                '/resetallpoints\n' +
-                'تصفير نقاط الجميع'
+                '/play\nبدء لعبة جديدة\n\n' +
+                '/stop\nإيقاف اللعبة الحالية\n\n' +
+                '/games\nعرض الألعاب المتوفرة\n\n' +
+                '/points\nعرض النقاط\n\n' +
+                'توب\nعرض صدارة الترتيب\n\n' +
+                'وقف\nإيقاف اللعبة بالأمر النصي\n\n' +
+                '/setrole\nتحديد رول التحكم للمشرفين\n\n' +
+                '/addpoints\nإضافة نقاط لعضو\n\n' +
+                '/resetpoints\nتصفير نقاط عضو\n\n' +
+                '/resetallpoints\nتصفير نقاط الجميع'
             );
         await interaction.reply({ embeds: [helpEmbed] });
     } 
