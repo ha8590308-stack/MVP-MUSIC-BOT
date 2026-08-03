@@ -34,10 +34,10 @@ const commands = [
         )
 ].map(command => command.toJSON());
 
-// التوكن وأيدي القناة مباشرة داخل الكود
-const TOKEN = process.env.DISCORD_TOKEN; // التوكن لا يزال أفضله ببيئة رندر للأمان
-const CLIENT_ID = '1530851367558840422'; // أيدي البوت/القناة حسب رغبتك
-const GAME_CHANNEL_ID = '1530851367558840422'; // أيدي قناة الألعاب اللي حددتها
+// سحب التوكن بأمان من رندر، وثبات الآيدي هنا مباشرة
+const TOKEN = process.env.DISCORD_TOKEN;
+const CLIENT_ID = '1530851367558840422';
+const GAME_CHANNEL_ID = '1530851367558840422';
 
 // تسجيل الأوامر عند تشغيل البوت
 const rest = new REST({ version: '10' }).setToken(TOKEN);
