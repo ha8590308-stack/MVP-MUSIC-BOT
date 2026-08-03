@@ -1,6 +1,4 @@
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
-const { createCanvas, loadImage } = require('canvas');
-const GIFEncoder = require('gifencoder');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -77,12 +75,24 @@ const allFlagsList = [
     { name: 'منغوليا', code: 'mn' }
 ];
 
-const baseWordsList = [
+const hugeWordsList = [
     'برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 
     'فوز', 'لعبة', 'حاسب', 'شبكة', 'تطبيق', 'مطور', 'قناة', 'رومات', 'تفاعل', 'شات', 
-    'سماعة', 'لوحة', 'مفاتيح', 'صوت', 'تحكم', 'مشرف', 'عضو', 'مسابقة',
-    'تقنية', 'هاتف', 'متصفح', 'تخزين', 'معالج', 'بطاقة', 'رسومات', 'تنزيل', 'اتصال', 'حماية',
-    'منتصر', 'محترف', 'تطبيقات', 'ديوانية', 'سعودية', 'رياضيات', 'فيزياء', 'تاريخ', 'مستقبل', 'فضاء'
+    'سماعة', 'لوحة', 'مفاتيح', 'صوت', 'تحكم', 'مشرف', 'عضو', 'مسابقة', 'تقنية', 'هاتف', 
+    'متصفح', 'تخزين', 'معالج', 'بطاقة', 'رسومات', 'تنزيل', 'اتصال', 'حماية', 'منتصر', 'محترف', 
+    'تطبيقات', 'ديوانية', 'سعودية', 'رياضيات', 'فيزياء', 'تاريخ', 'مستقبل', 'فضاء', 'عالم', 'خوارزمية',
+    'استضافة', 'متجر', 'تصميم', 'برمجيات', 'فريق', 'منافسة', 'ترتيب', 'صدارة', 'نقاط', 'مستوى',
+    'تطوير', 'تأمين', 'اختراق', 'ثغرة', 'دفاع', 'هجوم', 'استراتيجية', 'خطة', 'نجاح', 'إنجاز',
+    'مفتاح', 'نافذة', 'قائمة', 'خيارات', 'تفعيل', 'إيقاف', 'تشغيل', 'تغيير', 'حفظ', 'بحث',
+    'استعلام', 'قاعدة', 'بيانات', 'ملف', 'مجلد', 'موقع', 'إنترنت', 'سرعة', 'أداء', 'استجابة',
+    'جاوا', 'بايثون', 'ريأكت', 'جافاسكريبت', 'نود', 'تليجرام', 'يوتيوب', 'تويتر', 'تيكتوك', 'انستغرام',
+    'سحابية', 'مرن', 'سريع', 'ذكي', 'اصطناعي', 'توجيه', 'تنسيق', 'ترجمة', 'تواصل', 'محادثة',
+    'مشاهدة', 'استماع', 'أغنية', 'نغمة', 'صوتيات', 'مرئيات', 'بث', 'مباشر', 'تسجيل', 'دخول',
+    'خروج', 'تسجيل', 'حساب', 'كلمة', 'مرور', 'تحقق', 'بصمة', 'صلاحية', 'مشرف', 'مدير',
+    'منسق', 'مساعد', 'رئيسي', 'فرعي', 'عام', 'خاص', 'مجموعة', 'فردي', 'جماعي', 'شارك',
+    'تفاعل', 'ارسل', 'استقبل', 'نسخ', 'لصق', 'حذف', 'تعديل', 'إضافة', 'تأكيد', 'رجوع',
+    'تقدم', 'استمرار', 'توقف', 'انتظار', 'جاهز', 'انطلق', 'ابدأ', 'انتهي', 'سؤال', 'جواب',
+    'حل', 'مشكلة', 'خطأ', 'صواب', 'دقيق', 'ممتاز', 'جيد', 'سيء', 'ضعيف', 'قوي'
 ];
 
 let availableWords = [];
@@ -98,7 +108,7 @@ function shuffleArray(array) {
 }
 
 function getUniqueWord() {
-    if (availableWords.length === 0) availableWords = shuffleArray(baseWordsList);
+    if (availableWords.length === 0) availableWords = shuffleArray(hugeWordsList);
     return availableWords.pop();
 }
 
@@ -119,121 +129,6 @@ function isStaff(member) {
     return hasAdmin || hasCustomRole;
 }
 
-// دالة رسم الإطار الواحد لعجلة الروليت
-function drawWheelFrame(ctx, width, height, players, clientInstance, guildId, rotation, centerUserId, isFinal) {
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = 210;
-    const sliceAngle = (2 * Math.PI) / players.length;
-
-    ctx.fillStyle = '#1e3a8a';
-    ctx.fillRect(0, 0, width, height);
-
-    const sliceColors = ['#2563eb', '#3b82f6', '#1d4ed8', '#1e40af'];
-
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(rotation);
-    ctx.translate(-centerX, -centerY);
-
-    for (let i = 0; i < players.length; i++) {
-        const startAngle = i * sliceAngle;
-        const endAngle = (i + 1) * sliceAngle;
-
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
-        ctx.closePath();
-
-        ctx.fillStyle = sliceColors[i % sliceColors.length];
-        ctx.fill();
-        
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3.5;
-        ctx.stroke();
-
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        const midAngle = startAngle + (sliceAngle / 2);
-        ctx.rotate(midAngle);
-
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 16px Arial';
-        
-        let displayName = players[i];
-        ctx.fillText(displayName, radius - 30, 0);
-        ctx.restore();
-    }
-    ctx.restore();
-
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 5;
-    ctx.stroke();
-
-    const centerRadius = 55;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, centerRadius, 0, 2 * Math.PI);
-    ctx.closePath();
-    ctx.clip();
-
-    ctx.fillStyle = '#1e3a8a';
-    ctx.fillRect(centerX - centerRadius, centerY - centerRadius, centerRadius * 2, centerRadius * 2);
-    ctx.restore();
-
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, centerRadius, 0, 2 * Math.PI);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 4;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(width - 4, centerY - 15);
-    ctx.lineTo(width - 28, centerY);
-    ctx.lineTo(width - 4, centerY + 15);
-    ctx.closePath();
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-}
-
-// دالة توليد وعرض حركة الدوران كـ GIF متحرك
-async function generateSpinningGif(players, clientInstance, guildId, luckyPlayerId) {
-    const width = 500;
-    const height = 500;
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
-
-    const encoder = new GIFEncoder(width, height);
-    encoder.start();
-    encoder.setRepeat(0); 
-    encoder.setDelay(70); 
-    encoder.setQuality(10);
-
-    const totalFrames = 18; 
-    const sliceAngle = (2 * Math.PI) / players.length;
-    const luckyIndex = players.indexOf(luckyPlayerId);
-    const finalAngle = 5 * (2 * Math.PI) + (2 * Math.PI - (luckyIndex * sliceAngle + sliceAngle / 2));
-
-    for (let f = 0; f < totalFrames; f++) {
-        let progress = f / totalFrames;
-        let currentRotation = finalAngle * Math.pow(progress, 2); 
-        
-        drawWheelFrame(ctx, width, height, players, clientInstance, guildId, currentRotation, luckyPlayerId, f === totalFrames - 1);
-        encoder.addFrame(ctx);
-    }
-
-    encoder.finish();
-    const buffer = encoder.out.getData();
-    return new AttachmentBuilder(buffer, { name: 'roulette.gif' });
-}
-
 const commands = [
     new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة'),
     new SlashCommandBuilder().setName('games').setDescription('عرض الألعاب المتوفرة'),
@@ -248,8 +143,7 @@ const commands = [
                     { name: 'سرعة', value: 'سرعة' },
                     { name: 'فك', value: 'فك' },
                     { name: 'أدمج', value: 'أدمج' },
-                    { name: 'أعلام', value: 'أعلام' },
-                    { name: 'روليت', value: 'روليت' }
+                    { name: 'أعلام', value: 'أعلام' }
                 )
         )
         .addIntegerOption(option =>
@@ -305,12 +199,28 @@ function setGameTimeout(channel) {
             await channel.send(`انتهى الوقت! لم يتفاعل أحد مرتين متتاليتين، تم إيقاف اللعبة.`);
             activeGame = null;
         } else {
-            await channel.send(`انتهى الوقت! لم يقدم أحد الإجابة، جاري إرسال كلمة أخرى...`);
-            const nextWord = getUniqueWord();
+            await channel.send(`انتهى الوقت! لم يقدم أحد الإجابة، جاري إرسال كلمات أخرى...`);
+            
+            let nextAnswer, displayText;
+            if (activeGame.type === 'سرعة') {
+                const w1 = getUniqueWord();
+                const w2 = getUniqueWord();
+                nextAnswer = `${w1} ${w2}`;
+                displayText = `# ${w1} ${w2}`;
+            } else if (activeGame.type === 'فك') {
+                const w = getUniqueWord();
+                nextAnswer = makeSpaced(w);
+                displayText = `# ${nextAnswer}`;
+            } else {
+                const w = getUniqueWord();
+                nextAnswer = w;
+                displayText = `# ${w}`;
+            }
+
             activeGame.isProcessing = false;
-            activeGame.answer = nextWord;
+            activeGame.answer = nextAnswer;
             setGameTimeout(channel);
-            const embed = new EmbedBuilder().setColor(0x57F287).setTitle('سرعة').setDescription(`أسرع شخص يكتب الكلمة:\n\n# ${nextWord}\n\n*(النقاط: ${activeGame.points})*`);
+            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب:\n\n${displayText}\n\n*(النقاط: ${activeGame.points})*`);
             return channel.send({ embeds: [embed] });
         }
     }, 30000);
@@ -394,11 +304,26 @@ client.on('messageCreate', async message => {
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
             
             if (activeGame.type === 'سرعة' || activeGame.type === 'فك' || activeGame.type === 'أدمج') {
-                const nextWord = getUniqueWord();
-                activeGame.answer = nextWord;
+                let nextAnswer, displayText;
+                if (activeGame.type === 'سرعة') {
+                    const w1 = getUniqueWord();
+                    const w2 = getUniqueWord();
+                    nextAnswer = `${w1} ${w2}`;
+                    displayText = `# ${w1} ${w2}`;
+                } else if (activeGame.type === 'فك') {
+                    const w = getUniqueWord();
+                    nextAnswer = makeSpaced(w);
+                    displayText = `# ${nextAnswer}`;
+                } else {
+                    const w = getUniqueWord();
+                    nextAnswer = w;
+                    displayText = `# ${w}`;
+                }
+
+                activeGame.answer = nextAnswer;
                 activeGame.isProcessing = false;
                 setGameTimeout(message.channel);
-                const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب الكلمة:\n\n# ${nextWord}\n\n*(النقاط: ${activeGame.points})*`);
+                const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب:\n\n${displayText}\n\n*(النقاط: ${activeGame.points})*`);
                 return message.channel.send({ embeds: [embed] });
             } else if (activeGame.type === 'أعلام') {
                 return sendNextFlag(message.channel);
@@ -419,7 +344,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ embeds: [helpEmbed] });
     } 
     else if (commandName === 'games') {
-        await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\` | \`روليت\``);
+        await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\``);
     } 
     else if (commandName === 'setrole') {
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'للأدمن فقط', ephemeral: true });
@@ -438,114 +363,27 @@ client.on('interactionCreate', async interaction => {
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
         }
 
-        if (gameType === 'روليت') {
-            const participants = new Set();
-            const joinButton = new ButtonBuilder().setCustomId('join_roulette').setLabel('انضمام للعبة').setStyle(ButtonStyle.Success);
-            const row = new ActionRowBuilder().addComponents(joinButton);
-            
-            const msg = await interaction.reply({ 
-                embeds: [new EmbedBuilder().setColor(0x2563eb).setTitle('لعبة الروليت').setDescription('اضغط الزر أدناه للانضمام')], 
-                components: [row], 
-                fetchReply: true 
-            });
-
-            const collector = msg.createMessageComponentCollector({ time: 15000 });
-            collector.on('collect', async i => {
-                if (!participants.has(i.user.id)) {
-                    participants.add(i.user.id);
-                    await i.reply({ content: 'تم انضمامك بنجاح.', ephemeral: true });
-                } else {
-                    await i.reply({ content: 'أنت منضم مسبقاً!', ephemeral: true });
-                }
-            });
-
-            collector.on('end', async () => {
-                let players = Array.from(participants);
-                if (players.length === 0) return interaction.editReply({ content: 'انتهى الوقت بدون مشاركين.', embeds: [], components: [] });
-                if (players.length === 1) {
-                    userPoints.set(players[0], (userPoints.get(players[0]) || 0) + customPoints);
-                    saveDatabase();
-                    return interaction.editReply({ content: `فاز اللاعب <@${players[0]}> تلقائياً بـ ${customPoints} نقطة لعدم وجود منافسين!`, embeds: [], components: [] });
-                }
-
-                const playersListText = players.map(id => `<@${id}>`).join('\n');
-                await interaction.editReply({ 
-                    content: `تم انتهاء التسجيل، اللاعبون المشاركون:\n${playersListText}`, 
-                    embeds: [], 
-                    components: [] 
-                });
-
-                const runRouletteRound = async () => {
-                    if (players.length <= 1) {
-                        userPoints.set(players[0], (userPoints.get(players[0]) || 0) + customPoints);
-                        saveDatabase();
-                        return interaction.followUp({ content: `انتهت لعبة الروليت! الفائز الأخير هو <@${players[0]}> وحصل على ${customPoints} نقطة!` });
-                    }
-
-                    const luckyPlayerIndex = Math.floor(Math.random() * players.length);
-                    const luckyPlayerId = players[luckyPlayerIndex];
-
-                    let displayNames = [];
-                    const guild = client.guilds.cache.get(interaction.guildId);
-                    for (const id of players) {
-                        let name = id;
-                        if (guild) {
-                            const member = await guild.members.fetch(id).catch(() => null);
-                            if (member) name = member.displayName;
-                        }
-                        if (name.length > 10) name = name.substring(0, 8) + '..';
-                        displayNames.push(name);
-                    }
-
-                    const gifAttachment = await generateSpinningGif(displayNames, client, interaction.guildId, displayNames[luckyPlayerIndex]);
-                    const gifEmbed = new EmbedBuilder()
-                        .setColor(0x2563eb)
-                        .setTitle('🎡 عجلة الروليت تدور...')
-                        .setImage('attachment://roulette.gif');
-
-                    const targetOptions = players.filter(id => id !== luckyPlayerId).map(id => ({ label: `طرد اللاعب`, value: id }));
-                    let componentsRow = [];
-                    if (targetOptions.length > 0) {
-                        const selectMenu = new StringSelectMenuBuilder().setCustomId(`kick_${luckyPlayerId}`).setPlaceholder('اختر لاعباً لطرده').addOptions(targetOptions);
-                        componentsRow = [new ActionRowBuilder().addComponents(selectMenu)];
-                    }
-
-                    let currentMsg = await interaction.followUp({ 
-                        content: `🎡 استقرت العجلة على: <@${luckyPlayerId}>`, 
-                        embeds: [gifEmbed], 
-                        files: [gifAttachment], 
-                        components: componentsRow 
-                    });
-
-                    if (targetOptions.length > 0) {
-                        const choiceCollector = currentMsg.createMessageComponentCollector({ filter: i => i.user.id === luckyPlayerId, time: 15000, max: 1 });
-                        choiceCollector.on('collect', async i => {
-                            const kickedId = i.values[0];
-                            players = players.filter(id => id !== kickedId);
-                            await i.update({ content: `تم طرد اللاعب <@${kickedId}>`, embeds: [], files: [], components: [] });
-                        });
-                        choiceCollector.on('end', async collected => {
-                            if (collected.size === 0 && players.length > 1) {
-                                const kickedId = players.find(id => id !== luckyPlayerId);
-                                players = players.filter(id => id !== kickedId);
-                                try {
-                                    await currentMsg.edit({ content: `انتهى الوقت وتم طرد <@${kickedId}> تلقائياً`, embeds: [], components: [], files: [] });
-                                } catch (e) {}
-                            }
-                            setTimeout(runRouletteRound, 2000);
-                        });
-                    }
-                };
-                setTimeout(runRouletteRound, 1000);
-            });
-            return;
-        }
-
         if (gameType === 'سرعة' || gameType === 'فك' || gameType === 'أدمج') {
-            const word = getUniqueWord();
-            activeGame = { type: gameType, answer: gameType === 'سرعة' ? word : makeSpaced(word), points: customPoints, missedCount: 0, isProcessing: false };
+            let answerText, displayText;
+            
+            if (gameType === 'سرعة') {
+                const w1 = getUniqueWord();
+                const w2 = getUniqueWord();
+                answerText = `${w1} ${w2}`;
+                displayText = `# ${w1} ${w2}`;
+            } else if (gameType === 'فك') {
+                const w = getUniqueWord();
+                answerText = makeSpaced(w);
+                displayText = `# ${answerText}`;
+            } else { // أدمج
+                const w = getUniqueWord();
+                answerText = w;
+                displayText = `# ${w}`;
+            }
+
+            activeGame = { type: gameType, answer: answerText, points: customPoints, missedCount: 0, isProcessing: false };
             setGameTimeout(interaction.channel);
-            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(gameType).setDescription(`أسرع شخص:\n\n# ${word}\n\n*(النقاط: ${customPoints})*`);
+            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(gameType).setDescription(`أسرع شخص:\n\n${displayText}\n\n*(النقاط: ${customPoints})*`);
             await interaction.reply({ embeds: [embed] });
         }
         else if (gameType === 'أعلام') {
@@ -560,6 +398,8 @@ client.on('interactionCreate', async interaction => {
             if (activeGame.timer) clearTimeout(activeGame.timer);
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
         }
+        activeGame = null;
+        await interaction.reply('تم إيقاف اللعبة.');
     }
     else if (commandName === 'points') {
         const target = interaction.options.getUser('user') || interaction.user;
