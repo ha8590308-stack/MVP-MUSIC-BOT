@@ -1,7 +1,6 @@
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { MongoClient } = require('mongodb');
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,39 +15,89 @@ const client = new Client({
     ]
 });
 
-const DB_FILE = path.join(__dirname, 'database.json');
+// ==================== [ إعدادات قاعدة البيانات - MongoDB ] ====================
+const uri = "mongodb+srv://ha8590308_db_user:s2qgfEqpFCR1yggr@cluster0.vxapzko.mongodb.net/?appName=Cluster0";
+const dbClient = new MongoClient(uri);
 
-function loadDatabase() {
+let db, pointsCollection, settingsCollection;
+let userPoints = new Map();
+let allowedRoleId = null;
+
+async function connectDB() {
     try {
-        if (fs.existsSync(DB_FILE)) {
-            const data = fs.readFileSync(DB_FILE, 'utf8');
-            const json = JSON.parse(data);
-            return {
-                points: new Map(json.points || []),
-                allowedRoleId: json.allowedRoleId || null
-            };
+        await dbClient.connect();
+        db = dbClient.db('bot_database');
+        pointsCollection = db.collection('points');
+        settingsCollection = db.collection('settings');
+        console.log("Connected to MongoDB successfully!");
+
+        // تحميل النقاط من السحابة إلى الذاكرة عند الإقلاع
+        const allPoints = await pointsCollection.find({}).toArray();
+        userPoints.clear();
+        allPoints.forEach(doc => userPoints.set(doc.userId, doc.points));
+
+        // تحميل الإعدادات (مثل الرول المسموح)
+        const settings = await settingsCollection.findOne({ _id: 'config' });
+        if (settings) {
+            allowedRoleId = settings.allowedRoleId || null;
         }
+        console.log("Database loaded successfully.");
     } catch (e) {
-        console.error('خطأ في قراءة قاعدة البيانات:', e);
+        console.error('خطأ في الاتصال بقاعدة البيانات:', e);
     }
-    return { points: new Map(), allowedRoleId: null };
 }
+connectDB();
 
-function saveDatabase() {
+// دالة حفظ النقاط للسحابة
+async function savePointsToDB(userId, points) {
+    userPoints.set(userId, points);
     try {
-        const data = {
-            points: Array.from(userPoints.entries()),
-            allowedRoleId: allowedRoleId
-        };
-        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+        await pointsCollection.updateOne(
+            { userId: userId },
+            { $set: { points: points } },
+            { upsert: true }
+        );
     } catch (e) {
-        console.error('خطأ في حفظ قاعدة البيانات:', e);
+        console.error('خطأ في حفظ النقاط:', e);
     }
 }
 
-const db = loadDatabase();
-const userPoints = db.points;
-let allowedRoleId = db.allowedRoleId;
+// دالة حفظ الإعدادات للسحابة
+async function saveSettingsToDB() {
+    try {
+        await settingsCollection.updateOne(
+            { _id: 'config' },
+            { $set: { allowedRoleId: allowedRoleId } },
+            { upsert: true }
+        );
+    } catch (e) {
+        console.error('خطأ في حفظ الإعدادات:', e);
+    }
+}
+
+// دالة تصفير مستخدم واحد
+async function clearUserPointsDB(userId) {
+    userPoints.set(userId, 0);
+    try {
+        await pointsCollection.updateOne(
+            { userId: userId },
+            { $set: { points: 0 } },
+            { upsert: true }
+        );
+    } catch (e) {
+        console.error('خطأ في تصفير النقاط:', e);
+    }
+}
+
+// دالة تصفير الجميع
+async function resetAllPointsDB() {
+    userPoints.clear();
+    try {
+        await pointsCollection.deleteMany({});
+    } catch (e) {
+        console.error('خطأ في تصفير الجميع:', e);
+    }
+}
 
 let activeGame = null;
 
@@ -190,7 +239,7 @@ client.once('ready', async () => {
 function getGamePayload(gameType) {
     let answerText, displayText;
     if (gameType === 'سرعة') {
-        const isTwoWords = Math.random() < 0.5; // 50% فرصة كلمة أو كلمتين بشكل عشوائي
+        const isTwoWords = Math.random() < 0.5;
         if (isTwoWords) {
             const w1 = getUniqueWord();
             const w2 = getUniqueWord();
@@ -309,8 +358,7 @@ client.on('messageCreate', async message => {
 
             const userId = message.author.id;
             const totalPoints = (userPoints.get(userId) || 0) + activeGame.points;
-            userPoints.set(userId, totalPoints);
-            saveDatabase();
+            await savePointsToDB(userId, totalPoints);
 
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
             
@@ -358,7 +406,7 @@ client.on('interactionCreate', async interaction => {
     else if (commandName === 'setrole') {
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'للأدمن فقط', ephemeral: true });
         allowedRoleId = interaction.options.getRole('role').id;
-        saveDatabase();
+        await saveSettingsToDB();
         await interaction.reply(`تم تعيين رول التحكم بنجاح وحفظه بشكل دائم.`);
     }
     else if (commandName === 'play') {
@@ -402,21 +450,19 @@ client.on('interactionCreate', async interaction => {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
         const target = interaction.options.getUser('user');
         const pts = interaction.options.getInteger('points');
-        userPoints.set(target.id, (userPoints.get(target.id) || 0) + pts);
-        saveDatabase();
+        const newTotal = (userPoints.get(target.id) || 0) + pts;
+        await savePointsToDB(target.id, newTotal);
         await interaction.reply(`تمت الإضافة لـ <@${target.id}> وحفظها.`);
     }
     else if (commandName === 'resetpoints') {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
         const target = interaction.options.getUser('user');
-        userPoints.set(target.id, 0);
-        saveDatabase();
+        await clearUserPointsDB(target.id);
         await interaction.reply(`تم تصفير نقاط <@${target.id}>.`);
     }
     else if (commandName === 'resetallpoints') {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
-        userPoints.clear();
-        saveDatabase();
+        await resetAllPointsDB();
         await interaction.reply('تم تصفير نقاط الجميع.');
     }
 });
