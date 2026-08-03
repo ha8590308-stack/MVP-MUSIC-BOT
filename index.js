@@ -174,7 +174,7 @@ const commands = [
 ].map(command => command.toJSON());
 
 const TOKEN = process.env.DISCORD_TOKEN;
-const CLIENT_ID = '1527850273672790056';
+const CLIENT_ID = '1533411298577088604';
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 client.once('ready', async () => {
@@ -186,6 +186,32 @@ client.once('ready', async () => {
         console.error('خطأ في تحديث الأوامر:', error);
     }
 });
+
+function getGamePayload(gameType) {
+    let answerText, displayText;
+    if (gameType === 'سرعة') {
+        const isTwoWords = Math.random() < 0.5; // 50% فرصة كلمة أو كلمتين بشكل عشوائي
+        if (isTwoWords) {
+            const w1 = getUniqueWord();
+            const w2 = getUniqueWord();
+            answerText = `${w1} ${w2}`;
+            displayText = `# ${w1} ${w2}`;
+        } else {
+            const w = getUniqueWord();
+            answerText = w;
+            displayText = `# ${w}`;
+        }
+    } else if (gameType === 'فك') {
+        const w = getUniqueWord();
+        answerText = makeSpaced(w);
+        displayText = `# ${answerText}`;
+    } else if (gameType === 'أدمج') {
+        const w = getUniqueWord();
+        answerText = w; 
+        displayText = `# ${makeSpaced(w)}`; 
+    }
+    return { answerText, displayText };
+}
 
 function setGameTimeout(channel) {
     if (activeGame && activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
@@ -199,28 +225,13 @@ function setGameTimeout(channel) {
             await channel.send(`انتهى الوقت! لم يتفاعل أحد مرتين متتاليتين، تم إيقاف اللعبة.`);
             activeGame = null;
         } else {
-            await channel.send(`انتهى الوقت! لم يقدم أحد الإجابة، جاري إرسال كلمات أخرى...`);
+            await channel.send(`انتهى الوقت! لم يقدم أحد الإجابة، جاري إرسال سؤال آخر...`);
             
-            let nextAnswer, displayText;
-            if (activeGame.type === 'سرعة') {
-                const w1 = getUniqueWord();
-                const w2 = getUniqueWord();
-                nextAnswer = `${w1} ${w2}`;
-                displayText = `# ${w1} ${w2}`;
-            } else if (activeGame.type === 'فك') {
-                const w = getUniqueWord();
-                nextAnswer = makeSpaced(w);
-                displayText = `# ${nextAnswer}`;
-            } else {
-                const w = getUniqueWord();
-                nextAnswer = w;
-                displayText = `# ${w}`;
-            }
-
+            const payload = getGamePayload(activeGame.type);
             activeGame.isProcessing = false;
-            activeGame.answer = nextAnswer;
+            activeGame.answer = payload.answerText;
             setGameTimeout(channel);
-            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب:\n\n${displayText}\n\n*(النقاط: ${activeGame.points})*`);
+            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب:\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
             return channel.send({ embeds: [embed] });
         }
     }, 30000);
@@ -304,26 +315,11 @@ client.on('messageCreate', async message => {
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
             
             if (activeGame.type === 'سرعة' || activeGame.type === 'فك' || activeGame.type === 'أدمج') {
-                let nextAnswer, displayText;
-                if (activeGame.type === 'سرعة') {
-                    const w1 = getUniqueWord();
-                    const w2 = getUniqueWord();
-                    nextAnswer = `${w1} ${w2}`;
-                    displayText = `# ${w1} ${w2}`;
-                } else if (activeGame.type === 'فك') {
-                    const w = getUniqueWord();
-                    nextAnswer = makeSpaced(w);
-                    displayText = `# ${nextAnswer}`;
-                } else {
-                    const w = getUniqueWord();
-                    nextAnswer = w;
-                    displayText = `# ${w}`;
-                }
-
-                activeGame.answer = nextAnswer;
+                const payload = getGamePayload(activeGame.type);
+                activeGame.answer = payload.answerText;
                 activeGame.isProcessing = false;
                 setGameTimeout(message.channel);
-                const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب:\n\n${displayText}\n\n*(النقاط: ${activeGame.points})*`);
+                const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب:\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
                 return message.channel.send({ embeds: [embed] });
             } else if (activeGame.type === 'أعلام') {
                 return sendNextFlag(message.channel);
@@ -377,26 +373,10 @@ client.on('interactionCreate', async interaction => {
         }
 
         if (gameType === 'سرعة' || gameType === 'فك' || gameType === 'أدمج') {
-            let answerText, displayText;
-            
-            if (gameType === 'سرعة') {
-                const w1 = getUniqueWord();
-                const w2 = getUniqueWord();
-                answerText = `${w1} ${w2}`;
-                displayText = `# ${w1} ${w2}`;
-            } else if (gameType === 'فك') {
-                const w = getUniqueWord();
-                answerText = makeSpaced(w);
-                displayText = `# ${answerText}`;
-            } else { // أدمج
-                const w = getUniqueWord();
-                answerText = w;
-                displayText = `# ${w}`;
-            }
-
-            activeGame = { type: gameType, answer: answerText, points: customPoints, missedCount: 0, isProcessing: false };
+            const payload = getGamePayload(gameType);
+            activeGame = { type: gameType, answer: payload.answerText, points: customPoints, missedCount: 0, isProcessing: false };
             setGameTimeout(interaction.channel);
-            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(gameType).setDescription(`أسرع شخص:\n\n${displayText}\n\n*(النقاط: ${customPoints})*`);
+            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(gameType).setDescription(`أسرع شخص:\n\n${payload.displayText}\n\n*(النقاط: ${customPoints})*`);
             await interaction.reply({ embeds: [embed] });
         }
         else if (gameType === 'أعلام') {
