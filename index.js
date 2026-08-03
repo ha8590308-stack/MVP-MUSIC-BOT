@@ -34,7 +34,7 @@ const commands = [
         )
 ].map(command => command.toJSON());
 
-// سحب التوكن بأمان، وتثبيت المعرفات
+// التوكن من رندر، والمعرفات المضافة مباشرة
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = '1530851367558840422';
 const GAME_CHANNEL_ID = '1530851367558840422';
