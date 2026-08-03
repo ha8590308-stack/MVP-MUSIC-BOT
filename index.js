@@ -16,25 +16,25 @@ const client = new Client({
     ]
 });
 
-// إعداد الأوامر باللغة العربية بالكامل
+// إعداد الأوامر باللغة الإنجليزية لتطابق البوتات الأخرى وتظهر في القائمة
 const commands = [
     new SlashCommandBuilder()
-        .setName('مساعدة')
+        .setName('help')
         .setDescription('إظهار قائمة المساعدة والأوامر العامة'),
     new SlashCommandBuilder()
-        .setName('ألعاب')
+        .setName('games')
         .setDescription('عرض الألعاب المتوفرة في البوت'),
     new SlashCommandBuilder()
-        .setName('لعب')
+        .setName('play')
         .setDescription('بدء لعبة جديدة')
         .addStringOption(option =>
-            option.setName('نوع_اللعبة')
+            option.setName('game')
                 .setDescription('اختر اللعبة (سرعة، فك، أدمج، روليت)')
                 .setRequired(true)
         )
 ].map(command => command.toJSON());
 
-// سحب التوكن بأمان من رندر، وثبات الآيدي هنا مباشرة
+// التوكن ومعرفات البوت والقناة
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = '1530851367558840422';
 const GAME_CHANNEL_ID = '1530851367558840422';
@@ -62,30 +62,30 @@ client.on('interactionCreate', async interaction => {
 
     if (GAME_CHANNEL_ID && interaction.channelId !== GAME_CHANNEL_ID) {
         return interaction.reply({
-            content: `⚠️ يرجى استخدام الأوامر داخل قناة الألعاب المخصصة <#${GAME_CHANNEL_ID}>`,
+            content: `⚠️ Please use the command in a game channel <#${GAME_CHANNEL_ID}>`,
             ephemeral: true 
         });
     }
 
     const { commandName } = interaction;
 
-    if (commandName === 'مساعدة') {
+    if (commandName === 'help') {
         const helpEmbed = new EmbedBuilder()
             .setTitle('📖 قائمة المساعدة - الإعدادات العامة')
             .setColor(0x0099FF)
             .setDescription('إليك قائمة الأوامر المتاحة للبوت:')
             .addFields(
-                { name: '/لعب [نوع_اللعبة]', value: 'بدء لعبة جديدة', inline: false },
-                { name: '/ألعاب', value: 'عرض الألعاب المتوفرة', inline: false },
-                { name: '/مساعدة', value: 'إظهار قائمة المساعدة', inline: false }
+                { name: '/play [game]', value: 'بدء لعبة جديدة', inline: false },
+                { name: '/games', value: 'عرض الألعاب المتوفرة', inline: false },
+                { name: '/help', value: 'إظهار قائمة المساعدة', inline: false }
             );
         await interaction.reply({ embeds: [helpEmbed] });
     } 
-    else if (commandName === 'ألعاب') {
+    else if (commandName === 'games') {
         await interaction.reply('🎮 **الألعاب المتوفرة حالياً:**\n1. أسرع (سرعة البديهة)\n2. فك (فك الكلمات)\n3. أدمج (تجميع الحروف)\n4. روليت (لعبة العجلة والتحدي)');
     } 
-    else if (commandName === 'لعب') {
-        const gameType = interaction.options.getString('نوع_اللعبة');
+    else if (commandName === 'play') {
+        const gameType = interaction.options.getString('game');
         
         if (gameType === 'روليت') {
             await interaction.reply('🎡 **بدء لعبة الروليت!** جاري تجهيز العجلة واختيار اللاعبين...');
