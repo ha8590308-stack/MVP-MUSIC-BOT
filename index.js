@@ -17,38 +17,39 @@ const client = new Client({
 const userPoints = new Map();
 let activeGame = null;
 
-// قائمة شاملة لجميع أعلام دول العالم
+// قائمة شاملة لجميع أعلام دول العالم مع رموز الدول
 const allFlagsList = [
-    { name: 'السعودية', flag: '🇸🇦' }, { name: 'الإمارات', flag: '🇦🇪' }, { name: 'الكويت', flag: '🇰🇼' },
-    { name: 'قطر', flag: '🇶🇦' }, { name: 'البحرين', flag: '🇧🇭' }, { name: 'عمان', flag: '🇴🇲' },
-    { name: 'مصر', flag: '🇪🇬' }, { name: 'المغرب', flag: '🇲🇦' }, { name: 'الجزائر', flag: '🇩🇿' },
-    { name: 'العراق', flag: '🇮🇶' }, { name: 'الاردن', flag: '🇯🇴' }, { name: 'سوريا', flag: '🇸🇾' },
-    { name: 'لبنان', flag: '🇱🇧' }, { name: 'فلسطين', flag: '🇵🇸' }, { name: 'اليمن', flag: '🇾🇪' },
-    { name: 'السودان', flag: '🇸🇩' }, { name: 'ليبيا', flag: '🇱🇾' }, { name: 'تونس', flag: '🇹🇳' },
-    { name: 'موريتانيا', flag: '🇲🇷' }, { name: 'الصومال', flag: '🇸🇴' }, { name: 'جيبوتي', flag: '🇩🇯' },
-    { name: 'جزر القمر', flag: '🇰🇲' }, { name: 'امريكا', flag: '🇺🇸' }, { name: 'بريطانيا', flag: '🇬🇧' },
-    { name: 'فرنسا', flag: '🇫🇷' }, { name: 'المانيا', flag: '🇩🇪' }, { name: 'ايطاليا', flag: '🇮🇹' },
-    { name: 'اسبانيا', flag: '🇪🇸' }, { name: 'تركيا', flag: '🇹🇷' }, { name: 'البرتغال', flag: '🇵🇹' },
-    { name: 'روسيا', flag: '🇷🇺' }, { name: 'البرازيل', flag: '🇧🇷' }, { name: 'الارجنتين', flag: '🇦🇷' },
-    { name: 'اليابان', flag: '🇯🇵' }, { name: 'كوريا الجنوبية', flag: '🇰🇷' }, { name: 'الصين', flag: '🇨🇳' },
-    { name: 'الهند', flag: '🇮🇳' }, { name: 'كندا', flag: '🇨🇦' }, { name: 'استراليا', flag: '🇦🇺' },
-    { name: 'المكسيك', flag: '🇲🇽' }, { name: 'جنوب افريقيا', flag: '🇿🇦' }, { name: 'ايسلندا', flag: '🇮🇸' },
-    { name: 'السويد', flag: '🇸🇪' }, { name: 'النرويج', flag: '🇳🇴' }, { name: 'الدنمارك', flag: '🇩🇰' },
-    { name: 'فنلندا', flag: '🇫🇮' }, { name: 'سويسرا', flag: '🇨🇭' }, { name: 'النمسا', flag: '🇦🇹' },
-    { name: 'بلجيكا', flag: '🇧🇪' }, { name: 'هولندا', flag: '🇳🇱' }, { name: 'اليونان', flag: '🇬🇷' },
-    { name: 'بولندا', flag: '🇵🇱' }, { name: 'اوكرانيا', flag: '🇺🇦' }, { name: 'باكستان', flag: '🇵🇰' },
-    { name: 'إيران', flag: '🇮🇷' }, { name: 'إندونيسيا', flag: '🇮🇩' }, { name: 'ماليزيا', flag: '🇲🇾' }
+    { name: 'السعودية', code: 'sa' }, { name: 'الإمارات', code: 'ae' }, { name: 'الكويت', code: 'kw' },
+    { name: 'قطر', code: 'qa' }, { name: 'البحرين', code: 'bh' }, { name: 'عمان', code: 'om' },
+    { name: 'مصر', code: 'eg' }, { name: 'المغرب', code: 'ma' }, { name: 'الجزائر', code: 'dz' },
+    { name: 'العراق', code: 'iq' }, { name: 'الاردن', code: 'jo' }, { name: 'سوريا', code: 'sy' },
+    { name: 'لبنان', code: 'lb' }, { name: 'فلسطين', code: 'ps' }, { name: 'اليمن', code: 'ye' },
+    { name: 'السودان', code: 'sd' }, { name: 'ليبيا', code: 'ly' }, { name: 'تونس', code: 'tn' },
+    { name: 'موريتانيا', code: 'mr' }, { name: 'الصومال', code: 'so' }, { name: 'جيبوتي', code: 'dj' },
+    { name: 'جزر القمر', code: 'km' }, { name: 'امريكا', code: 'us' }, { name: 'بريطانيا', code: 'gb' },
+    { name: 'فرنسا', code: 'fr' }, { name: 'المانيا', code: 'de' }, { name: 'ايطاليا', code: 'it' },
+    { name: 'اسبانيا', code: 'es' }, { name: 'تركيا', code: 'tr' }, { name: 'البرتغال', code: 'pt' },
+    { name: 'روسيا', code: 'ru' }, { name: 'البرازيل', code: 'br' }, { name: 'الارجنتين', code: 'ar' },
+    { name: 'اليابان', code: 'jp' }, { name: 'كوريا الجنوبية', code: 'kr' }, { name: 'الصين', code: 'cn' },
+    { name: 'الهند', code: 'in' }, { name: 'كندا', code: 'ca' }, { name: 'استراليا', code: 'au' },
+    { name: 'المكسيك', code: 'mx' }, { name: 'جنوب افريقيا', code: 'za' }, { name: 'ايسلندا', code: 'is' },
+    { name: 'السويد', code: 'se' }, { name: 'النرويج', code: 'no' }, { name: 'الدنمارك', code: 'dk' },
+    { name: 'فنلندا', code: 'fi' }, { name: 'سويسرا', code: 'ch' }, { name: 'النمسا', code: 'at' },
+    { name: 'بلجيكا', code: 'be' }, { name: 'هولندا', code: 'nl' }, { name: 'اليونان', code: 'gr' },
+    { name: 'بولندا', code: 'pl' }, { name: 'اوكرانيا', code: 'ua' }, { name: 'باكستان', code: 'pk' },
+    { name: 'إيران', code: 'ir' }, { name: 'إندونيسيا', code: 'id' }, { name: 'ماليزيا', code: 'my' },
+    { name: 'منغوليا', code: 'mn' }
 ];
 
-let availableFlags = [...allFlagsList]; // قائمة مخصصة للسحب بدون تكرار
+let availableFlags = [...allFlagsList];
 
 function getRandomFlag() {
     if (availableFlags.length === 0) {
-        availableFlags = [...allFlagsList]; // إذا خلصت كلها، تعبأ القائمة من جديد
+        availableFlags = [...allFlagsList];
     }
     const randomIndex = Math.floor(Math.random() * availableFlags.length);
     const selectedFlag = availableFlags[randomIndex];
-    availableFlags.splice(randomIndex, 1); // حذف العلم عشان ما يتكرر إلا لما تخلص القائمة
+    availableFlags.splice(randomIndex, 1);
     return selectedFlag;
 }
 
@@ -107,10 +108,41 @@ client.once('ready', async () => {
     }
 });
 
+// دالة مسؤولة عن إرسال علم جديد وتفعيل مؤقت الـ 15 ثانية
+async function sendNextFlag(channel, points) {
+    if (!activeGame || activeGame.type !== 'علامات') return;
+
+    // إلغاء أي مؤقت قديم لمنع التداخل
+    if (activeGame.timer) clearTimeout(activeGame.timer);
+
+    const randomFlag = getRandomFlag();
+    activeGame.answer = randomFlag.name;
+
+    const flagEmbed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setTitle('أعلام')
+        .setDescription('أسرع شخص يخمن اسم العلم الموجود تحت يفوز في اللعبة ❌ لا يوجد اي فائز')
+        .setImage(`https://flagcdn.com/w640/${randomFlag.code}.png`);
+
+    const sentMessage = await channel.send({ embeds: [flagEmbed] });
+    activeGame.messageId = sentMessage.id;
+
+    // مؤقت الـ 15 ثانية
+    activeGame.timer = setTimeout(async () => {
+        if (!activeGame || activeGame.type !== 'علامات') return;
+        
+        await channel.send(`⏰ انتهى الوقت! لم يقدم أحد الإجابة الصحيحة. الإجابة كانت: **${randomFlag.name}**`);
+        
+        // الانتقال تلقائياً للعلم التالي
+        sendNextFlag(channel, points);
+    }, 15000);
+}
+
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     if (message.content === 'وقف' || message.content === '/stop') {
+        if (activeGame && activeGame.timer) clearTimeout(activeGame.timer);
         activeGame = null;
         return message.reply('تم إيقاف اللعبة.');
     }
@@ -129,11 +161,14 @@ client.on('messageCreate', async message => {
             return message.channel.send(`الكلمة التالية:\n\`\`\`fix\n${randomWord}\n\`\`\``);
         }
 
-        if (activeGame.type === 'أعلام') {
+        if (activeGame.type === 'علامات') {
+            // إيقاف مؤقت الـ 15 ثانية لأن شخصاً ما أجاب بشكل صحيح
+            if (activeGame.timer) clearTimeout(activeGame.timer);
+
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
-            const randomFlag = getRandomFlag();
-            activeGame.answer = randomFlag.name;
-            return message.channel.send(`ما هو اسم الدولة لهذا العلم:\n\`\`\`ansi\n\n       ${randomFlag.flag}       \n\n\`\`\``);
+            
+            // الانتقال تلقائياً للعلم التالي بعد الإجابة الصحيحة
+            return sendNextFlag(message.channel, activeGame.points);
         }
 
         activeGame = null;
@@ -163,6 +198,9 @@ client.on('interactionCreate', async interaction => {
     else if (commandName === 'play') {
         const gameType = interaction.options.getString('game');
         const customPoints = interaction.options.getInteger('points');
+
+        // إذا كانت هناك لعبة قديمة تعمل، قم بإلغاء مؤقتها
+        if (activeGame && activeGame.timer) clearTimeout(activeGame.timer);
 
         if (gameType === 'روليت') {
             const participants = new Set();
@@ -220,12 +258,13 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\nت ح د ي\n\`\`\` - النقاط: ${customPoints}`);
         }
         else if (gameType === 'أعلام') {
-            const randomFlag = getRandomFlag();
-            activeGame = { type: 'أعلام', answer: randomFlag.name, points: customPoints };
-            await interaction.reply(`لعبة الأعلام بدأت! ما هو اسم الدولة لهذا العلم:\n\`\`\`ansi\n\n       ${randomFlag.flag}       \n\n\`\`\``);
+            activeGame = { type: 'علامات', points: customPoints };
+            await interaction.reply('🎮 سيتم بدء أعلام...');
+            await sendNextFlag(interaction.channel, customPoints);
         }
     }
     else if (commandName === 'stop') {
+        if (activeGame && activeGame.timer) clearTimeout(activeGame.timer);
         activeGame = null;
         await interaction.reply('تم إيقاف اللعبة.');
     }
