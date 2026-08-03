@@ -16,11 +16,9 @@ const client = new Client({
 
 const userPoints = new Map();
 let activeGame = null;
+let allowedRoleId = null; // تخزين رول التحكم
 
-// حفظ ID الرول المخول بالتحكم (افتراضياً فارغ، ويتم تحديده عبر أمر /setrole)
-let allowedRoleId = null;
-
-// ==================== بنوك البيانات الموسعة والعشوائية ====================
+// ==================== بنوك البيانات ====================
 
 const allFlagsList = [
     { name: 'السعودية', code: 'sa' }, { name: 'الإمارات', code: 'ae' }, { name: 'الكويت', code: 'kw' },
@@ -72,7 +70,7 @@ function makeSpaced(word) {
     return word.split('').join(' ');
 }
 
-// دالة فحص الصلاحيات (الأدمن الأساسي + الرول المخصص المحدد بـ /setrole)
+// دالة فحص صلاحيات التحكم (الأدمن + الرول المخصص)
 function isStaff(member) {
     if (!member) return false;
     const hasAdmin = member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageMessages);
@@ -80,7 +78,7 @@ function isStaff(member) {
     return hasAdmin || hasCustomRole;
 }
 
-// =========================================================================
+// ==================== تعريف الأوامر بالكامل (مع /addpoints و /setrole) ====================
 
 const commands = [
     new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة'),
@@ -105,22 +103,34 @@ const commands = [
                 .setDescription('عدد النقاط')
                 .setRequired(true)
         ),
-    new SlashCommandBuilder().setName('stop').setDescription('إيقاف اللعبة الحالية (للمشرفين أو رول التحكم)'),
+    new SlashCommandBuilder().setName('stop').setDescription('إيقاف اللعبة الحالية'),
     new SlashCommandBuilder()
         .setName('points')
         .setDescription('عرض النقاط')
         .addUserOption(option => option.setName('user').setDescription('العضو').setRequired(false)),
     new SlashCommandBuilder()
+        .setName('addpoints')
+        .setDescription('إضافة نقاط لعضو معين (للمشرفين أو رول التحكم)')
+        .addUserOption(option => 
+            option.setName('user')
+                .setDescription('العضو المراد إضافة النقاط له')
+                .setRequired(true)
+        )
+        .addIntegerOption(option => 
+            option.setName('points')
+                .setDescription('عدد النقاط المراد إضافتها')
+                .setRequired(true)
+        ),
+    new SlashCommandBuilder()
         .setName('resetpoints')
-        .setDescription('تصفير نقاط عضو (للمشرفين أو رول التحكم)')
+        .setDescription('تصفير نقاط عضو')
         .addUserOption(option => option.setName('user').setDescription('العضو').setRequired(true)),
     new SlashCommandBuilder()
         .setName('resetallpoints')
-        .setDescription('تصفير نقاط الجميع (للمشرفين أو رول التحكم)')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+        .setDescription('تصفير نقاط الجميع'),
     new SlashCommandBuilder()
         .setName('setrole')
-        .setDescription('تحديد الرول المسموح له بالتحكم في الألعاب والبوت (خاص بالأدمن)')
+        .setDescription('تحديد الرول المسموح له بالتحكم الكامل بالبوت والألعاب (للأدمن فقط)')
         .addRoleOption(option => 
             option.setName('role')
                 .setDescription('اختر الرول')
@@ -137,9 +147,9 @@ client.once('ready', async () => {
     console.log(`✅ تم تسجيل الدخول باسم: ${client.user.tag}`);
     try {
         await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-        console.log('✨ تم تحديث الأوامر.');
+        console.log('✨ تم تحديث جميع الأوامر بنجاح بما فيها /addpoints و /setrole.');
     } catch (error) {
-        console.error('❌ خطأ:', error);
+        console.error('❌ خطأ في تحديث الأوامر:', error);
     }
 });
 
@@ -221,7 +231,7 @@ async function sendNextFlag(channel) {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // كلمة "وقف" في الشات (محمية لفريق التحكم أو المشرفين)
+    // أمر "وقف" بالشات (محمي للمشرفين أو رول التحكم)
     if (message.content === 'وقف') {
         if (!isStaff(message.member)) {
             return message.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم المخصص فقط!', ephemeral: true });
@@ -234,7 +244,7 @@ client.on('messageCreate', async message => {
         return message.reply('تم إيقاف اللعبة.');
     }
 
-    // أمر "توب" في الشات (يظهر القائمة مع أيقونة السيرفر واسم MVP فوق يسار)
+    // أمر "توب" بالشات (متاح للجميع بدون استثناء، ويظهر شعار واسم سيرفر MVP فوق يسار)
     if (message.content === 'توب') {
         if (userPoints.size === 0) {
             return message.reply('لا توجد أي نقاط مسجلة حتى الآن!');
@@ -336,7 +346,8 @@ client.on('interactionCreate', async interaction => {
                 { name: '/stop', value: 'إيقاف اللعبة' },
                 { name: '/games', value: 'عرض الألعاب' },
                 { name: '/points', value: 'عرض النقاط' },
-                { name: '/setrole', value: 'تحديد رول التحكم بالبوت (للأدمن)' }
+                { name: '/addpoints', value: 'إضافة نقاط لعضو محدد' },
+                { name: '/setrole', value: 'تحديد رول التحكم المخصص (خاص بالأدمن)' }
             );
         await interaction.reply({ embeds: [helpEmbed] });
     } 
@@ -349,10 +360,9 @@ client.on('interactionCreate', async interaction => {
         }
         const role = interaction.options.getRole('role');
         allowedRoleId = role.id;
-        await interaction.reply(`✅ تم تعيين رول <@&${role.id}> بنجاح! يمكن لأصحاب هذا الرول الآن بدء وإيقاف الألعاب وإدارة النقاط.`);
+        await interaction.reply(`✅ تم تعيين رول <@&${role.id}> بنجاح! يمكن لأصحاب هذا الرول الآن تشغيل وإيقاف الألعاب وإدارة النقاط.`);
     }
     else if (commandName === 'play') {
-        // حماية أمر بدء اللعبة (يتطلب صلاحية إدارية أو الرول المخصص)
         if (!isStaff(interaction.member)) {
             return interaction.reply({ content: '❌ ليس لديك الصلاحية لبدء الألعاب! يتطلب رول التحكم المخصص أو الإشراف.', ephemeral: true });
         }
@@ -445,7 +455,7 @@ client.on('interactionCreate', async interaction => {
     }
     else if (commandName === 'stop') {
         if (!isStaff(interaction.member)) {
-            return interaction.reply({ content: '❌ هذا الأمر مخصص لفريق التحكم أو المشرفين فقط!', ephemeral: true });
+            return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
         }
         if (activeGame) {
             if (activeGame.timer) clearTimeout(activeGame.timer);
@@ -459,9 +469,22 @@ client.on('interactionCreate', async interaction => {
         const points = userPoints.get(targetUser.id) || 0;
         await interaction.reply(`نقاط <@${targetUser.id}>: ${points}`);
     }
+    else if (commandName === 'addpoints') {
+        if (!isStaff(interaction.member)) {
+            return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
+        }
+        const targetUser = interaction.options.getUser('user');
+        const pointsToAdd = interaction.options.getInteger('points');
+        
+        const currentPoints = userPoints.get(targetUser.id) || 0;
+        const newTotal = currentPoints + pointsToAdd;
+        userPoints.set(targetUser.id, newTotal);
+
+        await interaction.reply(`✅ تم إضافة **${pointsToAdd}** نقطة بنجاح إلى العضو <@${targetUser.id}>! (إجمالي نقاطه الآن: **${newTotal}**).`);
+    }
     else if (commandName === 'resetpoints') {
         if (!isStaff(interaction.member)) {
-            return interaction.reply({ content: '❌ هذا الأمر مخصص لفريق التحكم أو المشرفين فقط!', ephemeral: true });
+            return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
         }
         const targetUser = interaction.options.getUser('user');
         userPoints.set(targetUser.id, 0);
@@ -469,7 +492,7 @@ client.on('interactionCreate', async interaction => {
     }
     else if (commandName === 'resetallpoints') {
         if (!isStaff(interaction.member)) {
-            return interaction.reply({ content: '❌ هذا الأمر مخصص لفريق التحكم أو المشرفين فقط!', ephemeral: true });
+            return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
         }
         userPoints.clear();
         await interaction.reply('تم تصفير نقاط الجميع.');
