@@ -338,9 +338,22 @@ client.on('interactionCreate', async interaction => {
 
     if (commandName === 'help') {
         const helpEmbed = new EmbedBuilder()
-            .setTitle('قائمة الأوامر')
+            .setTitle('قائمة الأوامر الشاملة')
             .setColor(0x0099FF)
-            .setDescription('/play لبدء لعبة جديدة\n/stop لإيقاف اللعبة\n/games لعرض الألعاب\n/points لعرض النقاط');
+            .setDescription(
+                '**🎮 أوامر الألعاب:**\n' +
+                '`/play` - لبدء لعبة جديدة (سرعة، فك، أدمج، أعلام)\n' +
+                '`/stop` - لإيقاف اللعبة الحالية\n' +
+                '`/games` - لعرض الألعاب المتوفرة\n\n' +
+                '**🏆 أوامر النقاط:**\n' +
+                '`/points` - لعرض نقاطك أو نقاط عضو معين\n' +
+                '`/addpoints` - لإضافة نقاط لعضو معين (للإشراف)\n' +
+                '`/resetpoints` - لتصفير نقاط عضو محدد (للإشراف)\n' +
+                '`/resetallpoints` - لتصفير نقاط الجميع (للإشراف)\n' +
+                'كلمة `توب` - لعرض صدارة الترتيب في الشات\n\n' +
+                '**⚙️ أوامر الإدارة:**\n' +
+                '`/setrole` - تحديد رول التحكم بالبوت (للأدمن)'
+            );
         await interaction.reply({ embeds: [helpEmbed] });
     } 
     else if (commandName === 'games') {
