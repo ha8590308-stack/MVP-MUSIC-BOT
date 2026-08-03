@@ -15,8 +15,9 @@ const client = new Client({
     ]
 });
 
-// ==================== [ إعدادات قاعدة البيانات - MongoDB ] ====================
-const uri = "mongodb+srv://ha8590308_db_user:s2qgfEqpFCR1yggr@cluster0.vxapzko.mongodb.net/?appName=Cluster0";
+// ==================== [ إعدادات قاعدة البيانات - آمنة ] ====================
+// هنا يسحب الرابط من إعدادات البيئة (Environment Variables) في رندر
+const uri = process.env.MONGO_URI; 
 const dbClient = new MongoClient(uri);
 
 let db, pointsCollection, settingsCollection;
@@ -31,24 +32,20 @@ async function connectDB() {
         settingsCollection = db.collection('settings');
         console.log("Connected to MongoDB successfully!");
 
-        // تحميل النقاط من السحابة إلى الذاكرة عند الإقلاع
         const allPoints = await pointsCollection.find({}).toArray();
         userPoints.clear();
         allPoints.forEach(doc => userPoints.set(doc.userId, doc.points));
 
-        // تحميل الإعدادات (مثل الرول المسموح)
         const settings = await settingsCollection.findOne({ _id: 'config' });
         if (settings) {
             allowedRoleId = settings.allowedRoleId || null;
         }
-        console.log("Database loaded successfully.");
     } catch (e) {
         console.error('خطأ في الاتصال بقاعدة البيانات:', e);
     }
 }
 connectDB();
 
-// دالة حفظ النقاط للسحابة
 async function savePointsToDB(userId, points) {
     userPoints.set(userId, points);
     try {
@@ -57,12 +54,9 @@ async function savePointsToDB(userId, points) {
             { $set: { points: points } },
             { upsert: true }
         );
-    } catch (e) {
-        console.error('خطأ في حفظ النقاط:', e);
-    }
+    } catch (e) {}
 }
 
-// دالة حفظ الإعدادات للسحابة
 async function saveSettingsToDB() {
     try {
         await settingsCollection.updateOne(
@@ -70,12 +64,9 @@ async function saveSettingsToDB() {
             { $set: { allowedRoleId: allowedRoleId } },
             { upsert: true }
         );
-    } catch (e) {
-        console.error('خطأ في حفظ الإعدادات:', e);
-    }
+    } catch (e) {}
 }
 
-// دالة تصفير مستخدم واحد
 async function clearUserPointsDB(userId) {
     userPoints.set(userId, 0);
     try {
@@ -84,19 +75,14 @@ async function clearUserPointsDB(userId) {
             { $set: { points: 0 } },
             { upsert: true }
         );
-    } catch (e) {
-        console.error('خطأ في تصفير النقاط:', e);
-    }
+    } catch (e) {}
 }
 
-// دالة تصفير الجميع
 async function resetAllPointsDB() {
     userPoints.clear();
     try {
         await pointsCollection.deleteMany({});
-    } catch (e) {
-        console.error('خطأ في تصفير الجميع:', e);
-    }
+    } catch (e) {}
 }
 
 let activeGame = null;
@@ -442,7 +428,7 @@ client.on('interactionCreate', async interaction => {
         activeGame = null;
         await interaction.reply('تم إيقاف اللعبة.');
     }
-    else if (commandName === 'points') {
+    else if (commandName:: === 'points' || commandName === 'points') {
         const target = interaction.options.getUser('user') || interaction.user;
         await interaction.reply(`نقاط <@${target.id}>: ${userPoints.get(target.id) || 0}`);
     }
@@ -455,7 +441,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply(`تمت الإضافة لـ <@${target.id}> وحفظها.`);
     }
     else if (commandName === 'resetpoints') {
-        if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
+        if (!isStaff(interaction.member)) return, interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
         const target = interaction.options.getUser('user');
         await clearUserPointsDB(target.id);
         await interaction.reply(`تم تصفير نقاط <@${target.id}>.`);
