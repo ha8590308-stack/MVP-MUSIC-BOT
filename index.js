@@ -19,7 +19,7 @@ let activeGame = null;
 
 // ==================== بنوك البيانات الموسعة والعشوائية ====================
 
-// 1. الأعلام (قائمة شاملة ومتنوعة)
+// 1. الأعلام
 const allFlagsList = [
     { name: 'السعودية', code: 'sa' }, { name: 'الإمارات', code: 'ae' }, { name: 'الكويت', code: 'kw' },
     { name: 'قطر', code: 'qa' }, { name: 'البحرين', code: 'bh' }, { name: 'عمان', code: 'om' },
@@ -47,7 +47,7 @@ const allFlagsList = [
 const expandedWords = [
     'برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 
     'فوز', 'لعبة', 'حاسب', 'شبكة', 'تطبيق', 'مطور', 'قناة', 'رومات', 'تفاعل', 'شات', 
-    'سماعة', 'لوحة', 'مفاتيح', 'صوت', 'قناة', 'تحكم', 'مشرف', 'عضو', 'تفاعل', 'مسابقة',
+    'سماعة', 'لوحة', 'مفاتيح', 'صوت', 'تحكم', 'مشرف', 'عضو', 'مسابقة',
     'تقنية', 'هاتف', 'متصفح', 'تخزين', 'معالج', 'بطاقة', 'رسومات', 'تنزيل', 'اتصال', 'حماية',
     'منتصر', 'محترف', 'تطبيقات', 'ديوانية', 'سعودية', 'رياضيات', 'فيزياء', 'تاريخ', 'مستقبل', 'فضاء'
 ];
@@ -67,7 +67,6 @@ function getUniqueWord() {
     return availableWords.splice(index, 1)[0];
 }
 
-// دالة مساعدة لتنسيق الكلمة بحروف مفرقة (لفك الكلمات)
 function makeSpaced(word) {
     return word.split('').join(' ');
 }
@@ -127,7 +126,7 @@ client.once('ready', async () => {
     }
 });
 
-// دالة إرسال علم جديد بدون تكرار مع مؤقت 15 ثانية
+// دالة إرسال علم جديد
 async function sendNextFlag(channel, points) {
     if (!activeGame || activeGame.type !== 'أعلام') return;
     if (activeGame.timer) clearTimeout(activeGame.timer);
@@ -137,9 +136,9 @@ async function sendNextFlag(channel, points) {
 
     const flagEmbed = new EmbedBuilder()
         .setColor(0xED4245)
-        .setTitle('أعلام')
-        .setDescription('أسرع شخص يخمن اسم العلم الموجود تحت يفوز في اللعبة')
-        .setImage(`https://flagcdn.com/w640/${randomFlag.code}.png`);
+        .setTitle('🎮 لعبة الأعلام')
+        .setDescription('**أسرع شخص يخمن اسم العلم الموجود بالأسفل!**')
+        .setImage(`[https://flagcdn.com/w640/$](https://flagcdn.com/w640/$){randomFlag.code}.png`);
 
     const sentMessage = await channel.send({ embeds: [flagEmbed] });
     activeGame.messageId = sentMessage.id;
@@ -174,21 +173,33 @@ client.on('messageCreate', async message => {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
                 const nextWord = getUniqueWord();
                 activeGame.answer = nextWord;
-                return message.channel.send(`الكلمة التالية:\n\`\`\`fix\n${nextWord}\n\`\`\``);
+                const embed = new EmbedBuilder()
+                    .setColor(0x57F287)
+                    .setTitle('⚡ لعبة السرعة')
+                    .setDescription(`### الكلمة التالية:\n**${nextWord}**`);
+                return message.channel.send({ embeds: [embed] });
             }
 
             if (activeGame.type === 'فك') {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
                 const nextWord = getUniqueWord();
-                activeGame.answer = makeSpaced(nextWord); // الإجابة المطلوبة حروف مفرقة بالمساحات
-                return message.channel.send(`لعبة فك الكلمات بدأت! فكك الكلمة:\n\`\`\`fix\n${nextWord}\n\`\`\` - النقاط: ${activeGame.points}`);
+                activeGame.answer = makeSpaced(nextWord);
+                const embed = new EmbedBuilder()
+                    .setColor(0xFEE75C)
+                    .setTitle('🧩 لعبة فك الكلمات')
+                    .setDescription(`### فكك الكلمة التالية:\n**${nextWord}**\n\n*(النقاط: ${activeGame.points})*`);
+                return message.channel.send({ embeds: [embed] });
             }
 
             if (activeGame.type === 'أدمج') {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
                 const nextWord = getUniqueWord();
-                activeGame.answer = nextWord; // الإجابة كلمة متلاصقة عادية
-                return message.channel.send(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\n${makeSpaced(nextWord)}\n\`\`\` - النقاط: ${activeGame.points}`);
+                activeGame.answer = nextWord;
+                const embed = new EmbedBuilder()
+                    .setColor(0x5865F2)
+                    .setTitle('🔗 لعبة أدمج الحروف')
+                    .setDescription(`### أدمج الحروف التالية لتصبح كلمة:\n**${makeSpaced(nextWord)}**\n\n*(النقاط: ${activeGame.points})*`);
+                return message.channel.send({ embeds: [embed] });
             }
 
             if (activeGame.type === 'أعلام') {
@@ -270,21 +281,33 @@ client.on('interactionCreate', async interaction => {
         if (gameType === 'سرعة') {
             const word = getUniqueWord();
             activeGame = { type: 'سرعة', answer: word, points: customPoints };
-            await interaction.reply(`لعبة السرعة بدأت! الكلمة:\n\`\`\`fix\n${word}\n\`\`\``);
+            const embed = new EmbedBuilder()
+                .setColor(0x57F287)
+                .setTitle('⚡ لعبة السرعة')
+                .setDescription(`### الكلمة:\n**${word}**\n\n*(النقاط: ${customPoints})*`);
+            await interaction.reply({ embeds: [embed] });
         } 
         else if (gameType === 'فك') {
             const word = getUniqueWord();
             activeGame = { type: 'فك', answer: makeSpaced(word), points: customPoints };
-            await interaction.reply(`لعبة فك الكلمات بدأت! فكك الكلمة:\n\`\`\`fix\n${word}\n\`\`\` - النقاط: ${customPoints}`);
+            const embed = new EmbedBuilder()
+                .setColor(0xFEE75C)
+                .setTitle('🧩 لعبة فك الكلمات')
+                .setDescription(`### فكك الكلمة التالية:\n**${word}**\n\n*(النقاط: ${customPoints})*`);
+            await interaction.reply({ embeds: [embed] });
         } 
         else if (gameType === 'أدمج') {
             const word = getUniqueWord();
             activeGame = { type: 'أدمج', answer: word, points: customPoints };
-            await interaction.reply(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\n${makeSpaced(word)}\n\`\`\` - النقاط: ${customPoints}`);
+            const embed = new EmbedBuilder()
+                .setColor(0x5865F2)
+                .setTitle('🔗 لعبة أدمج الحروف')
+                .setDescription(`### أدمج الحروف التالية لتصبح كلمة:\n**${makeSpaced(word)}**\n\n*(النقاط: ${customPoints})*`);
+            await interaction.reply({ embeds: [embed] });
         }
         else if (gameType === 'أعلام') {
             activeGame = { type: 'أعلام', points: customPoints };
-            await interaction.reply('🎮 سيتم بدء أعلام...');
+            await interaction.reply('🎮 جاري بدء لعبة الأعلام...');
             await sendNextFlag(interaction.channel, customPoints);
         }
     }
