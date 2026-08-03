@@ -99,11 +99,11 @@ client.on('messageCreate', async message => {
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
             const randomWord = speedWords[Math.floor(Math.random() * speedWords.length)];
             activeGame.answer = randomWord;
-            return message.channel.send(`الكلمة التالية: **${randomWord}**`);
+            return message.channel.send(`الكلمة التالية:\n\`\`\`fix\n${randomWord}\n\`\`\``);
         }
 
         activeGame = null;
-        await message.reply(`فاز <@${userId}> وأخذ ${totalPoints} نقطة.`);
+        await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
     }
 });
 
@@ -175,15 +175,15 @@ client.on('interactionCreate', async interaction => {
         if (gameType === 'سرعة') {
             const firstWord = speedWords[Math.floor(Math.random() * speedWords.length)];
             activeGame = { type: 'سرعة', answer: firstWord, points: customPoints };
-            await interaction.reply(`لعبة السرعة بدأت! الكلمة الأولى: **${firstWord}** (اكتب وقف للإيقاف)`);
+            await interaction.reply(`لعبة السرعة بدأت! الكلمة:\n\`\`\`fix\n${firstWord}\n\`\`\``);
         } 
         else if (gameType === 'فك') {
             activeGame = { type: 'فك', answer: 'ديسكورد', points: customPoints };
-            await interaction.reply(`لعبة فك الكلمات بدأت! الكلمة: د ي س ك و ر د - النقاط: ${customPoints}`);
+            await interaction.reply(`لعبة فك الكلمات بدأت! الكلمة:\n\`\`\`fix\nديسكورد\n\`\`\` - النقاط: ${customPoints}`);
         } 
         else if (gameType === 'أدمج') {
             activeGame = { type: 'أدمج', answer: 'تحدي', points: customPoints };
-            await interaction.reply(`لعبة أدمج الحروف بدأت! الحروف: ت ح د ي - النقاط: ${customPoints}`);
+            await interaction.reply(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\nت ح د ي\n\`\`\` - النقاط: ${customPoints}`);
         }
         else if (gameType === 'أعلام') {
             const randomFlag = flagsList[Math.floor(Math.random() * flagsList.length)];
