@@ -1,10 +1,13 @@
 {
-  "name": "mvp-bot-music",
+  "name": "discord-games-bot",
   "version": "1.0.0",
+  "description": "Discord games bot for Render",
   "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
     "discord.js": "^14.14.1",
-    "@discordjs/voice": "^0.17.0",
-    "distube": "^4.1.2"
+    "express": "^4.19.2"
   }
 }
