@@ -17,7 +17,9 @@ const client = new Client({
 const userPoints = new Map();
 let activeGame = null;
 
-// بنك أعلام دول العالم
+// ==================== بنوك البيانات والألعاب بدون تكرار ====================
+
+// 1. الأعلام
 const allFlagsList = [
     { name: 'السعودية', code: 'sa' }, { name: 'الإمارات', code: 'ae' }, { name: 'الكويت', code: 'kw' },
     { name: 'قطر', code: 'qa' }, { name: 'البحرين', code: 'bh' }, { name: 'عمان', code: 'om' },
@@ -41,18 +43,11 @@ const allFlagsList = [
     { name: 'منغوليا', code: 'mn' }
 ];
 
-let availableFlags = [...allFlagsList];
-function getRandomFlag() {
-    if (availableFlags.length === 0) availableFlags = [...allFlagsList];
-    const index = Math.floor(Math.random() * availableFlags.length);
-    return availableFlags.splice(index, 1)[0];
-}
+// 2. السرعة
+const baseSpeedWords = ['برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 'فوز', 'لعبة', 'حاسب', 'شبكة', 'تطبيق', 'مطور', 'قناة', 'رومات', 'تفاعل', 'شات'];
 
-// بنك كلمات لعبة السرعة
-const speedWords = ['برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 'فوز', 'لعبة', 'حاسب', 'شبكة', 'تطبيق'];
-
-// بنك كلمات لعبة فك (يعرض الكلمة سليمة، والإجابة المطلوبة حروفها مفرقة)
-const unfuckBank = [
+// 3. فك (يجيب كلمة سليمة، والإجابة حروف مفرقة)
+const baseUnfudgeList = [
     { word: 'ديسكورد', spaced: 'د ي س ك و ر د' },
     { word: 'تحدي', spaced: 'ت ح د ي' },
     { word: 'برمجة', spaced: 'ب ر م ج ة' },
@@ -60,18 +55,54 @@ const unfuckBank = [
     { word: 'بطولة', spaced: 'ب ط و ل ة' },
     { word: 'سيرفر', spaced: 'س ي ر ف ر' },
     { word: 'محترف', spaced: 'م ح ت ر ف' },
-    { word: 'ديوانية', spaced: 'د ي و ا ن ي ة' }
+    { word: 'ديوانية', spaced: 'د ي و ا ن ي ة' },
+    { word: 'تطبيقات', spaced: 'ت ط ب ي ق ا ت' },
+    { word: 'منتصر', spaced: 'م ن ت ص ر' }
 ];
 
-// بنك لعبة أدمج الحروف (العكس: يعرض الحروف مفرقة، والإجابة كلمة متلاصقة)
-const mergeBank = [
+// 4. أدمج (يجيب حروف مفرقة، والإجابة كلمة متلاصقة)
+const baseMergeList = [
     { original: 'ديسكورد', merged: 'د ي س ك و ر د' },
     { original: 'تحدي', merged: 'ت ح د ي' },
     { original: 'برمجة', merged: 'ب ر م ج ة' },
     { original: 'كمبيوتر', merged: 'ك م ب ي و ت ر' },
     { original: 'بطولة', merged: 'ب ط و ل ة' },
-    { original: 'سيرفر', merged: 'س ي ر ف ر' }
+    { original: 'سيرفر', merged: 'س ي ر ف ر' },
+    { original: 'محترف', merged: 'م ح ت ر ف' },
+    { original: 'ديوانية', merged: 'د ي و ا ن ي ة' },
+    { original: 'تطبيقات', merged: 'ت ط ب ي ق ا ت' }
 ];
+
+// قوائم ديناميكية تمنع التكرار
+let availableFlags = [];
+let availableSpeed = [];
+let availableUnfudge = [];
+let availableMerge = [];
+
+function getUniqueItem(type) {
+    if (type === 'أعلام') {
+        if (availableFlags.length === 0) availableFlags = [...allFlagsList];
+        const index = Math.floor(Math.random() * availableFlags.length);
+        return availableFlags.splice(index, 1)[0];
+    }
+    if (type === 'سرعة') {
+        if (availableSpeed.length === 0) availableSpeed = [...baseSpeedWords];
+        const index = Math.floor(Math.random() * availableSpeed.length);
+        return availableSpeed.splice(index, 1)[0];
+    }
+    if (type === 'فك') {
+        if (availableUnfudge.length === 0) availableUnfudge = [...baseUnfudgeList];
+        const index = Math.floor(Math.random() * availableUnfudge.length);
+        return availableUnfudge.splice(index, 1)[0];
+    }
+    if (type === 'أدمج') {
+        if (availableMerge.length === 0) availableMerge = [...baseMergeList];
+        const index = Math.floor(Math.random() * availableMerge.length);
+        return availableMerge.splice(index, 1)[0];
+    }
+}
+
+// =========================================================================
 
 const commands = [
     new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة'),
@@ -126,12 +157,12 @@ client.once('ready', async () => {
     }
 });
 
-// دالة إرسال علم جديد مع مؤقت 15 ثانية
+// دالة إرسال علم جديد بدون تكرار مع مؤقت 15 ثانية
 async function sendNextFlag(channel, points) {
     if (!activeGame || activeGame.type !== 'أعلام') return;
     if (activeGame.timer) clearTimeout(activeGame.timer);
 
-    const randomFlag = getRandomFlag();
+    const randomFlag = getUniqueItem('أعلام');
     activeGame.answer = randomFlag.name;
 
     const flagEmbed = new EmbedBuilder()
@@ -171,23 +202,23 @@ client.on('messageCreate', async message => {
 
             if (activeGame.type === 'سرعة') {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
-                const randomWord = speedWords[Math.floor(Math.random() * speedWords.length)];
-                activeGame.answer = randomWord;
-                return message.channel.send(`الكلمة التالية:\n\`\`\`fix\n${randomWord}\n\`\`\``);
+                const nextWord = getUniqueItem('سرعة');
+                activeGame.answer = nextWord;
+                return message.channel.send(`الكلمة التالية:\n\`\`\`fix\n${nextWord}\n\`\`\``);
             }
 
             if (activeGame.type === 'فك') {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
-                const randomItem = unfuckBank[Math.floor(Math.random() * unfuckBank.length)];
-                activeGame.answer = randomItem.spaced; // الإجابة المطلوبة هي الحروف مفرقة
-                return message.channel.send(`لعبة فك الكلمات بدأت! فكك الكلمة:\n\`\`\`fix\n${randomItem.word}\n\`\`\` - النقاط: ${activeGame.points}`);
+                const nextItem = getUniqueItem('فك');
+                activeGame.answer = nextItem.spaced; // الإجابة حروف مفرقة
+                return message.channel.send(`لعبة فك الكلمات بدأت! فكك الكلمة:\n\`\`\`fix\n${nextItem.word}\n\`\`\` - النقاط: ${activeGame.points}`);
             }
 
             if (activeGame.type === 'أدمج') {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
-                const randomItem = mergeBank[Math.floor(Math.random() * mergeBank.length)];
-                activeGame.answer = randomItem.original;
-                return message.channel.send(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\n${randomItem.merged}\n\`\`\` - النقاط: ${activeGame.points}`);
+                const nextItem = getUniqueItem('أدمج');
+                activeGame.answer = nextItem.original; // الإجابة كلمة متلاصقة
+                return message.channel.send(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\n${nextItem.merged}\n\`\`\` - النقاط: ${activeGame.points}`);
             }
 
             if (activeGame.type === 'أعلام') {
@@ -267,19 +298,19 @@ client.on('interactionCreate', async interaction => {
         }
 
         if (gameType === 'سرعة') {
-            const firstWord = speedWords[Math.floor(Math.random() * speedWords.length)];
+            const firstWord = getUniqueItem('سرعة');
             activeGame = { type: 'سرعة', answer: firstWord, points: customPoints };
             await interaction.reply(`لعبة السرعة بدأت! الكلمة:\n\`\`\`fix\n${firstWord}\n\`\`\``);
         } 
         else if (gameType === 'فك') {
-            const randomItem = unfuckBank[Math.floor(Math.random() * unfuckBank.length)];
-            activeGame = { type: 'فك', answer: randomItem.spaced, points: customPoints };
-            await interaction.reply(`لعبة فك الكلمات بدأت! فكك الكلمة:\n\`\`\`fix\n${randomItem.word}\n\`\`\` - النقاط: ${customPoints}`);
+            const item = getUniqueItem('فك');
+            activeGame = { type: 'فك', answer: item.spaced, points: customPoints };
+            await interaction.reply(`لعبة فك الكلمات بدأت! فكك الكلمة:\n\`\`\`fix\n${item.word}\n\`\`\` - النقاط: ${customPoints}`);
         } 
         else if (gameType === 'أدمج') {
-            const randomItem = mergeBank[Math.floor(Math.random() * mergeBank.length)];
-            activeGame = { type: 'أدمج', answer: randomItem.original, points: customPoints };
-            await interaction.reply(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\n${randomItem.merged}\n\`\`\` - النقاط: ${customPoints}`);
+            const item = getUniqueItem('أدمج');
+            activeGame = { type: 'أدمج', answer: item.original, points: customPoints };
+            await interaction.reply(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\n${item.merged}\n\`\`\` - النقاط: ${customPoints}`);
         }
         else if (gameType === 'أعلام') {
             activeGame = { type: 'أعلام', points: customPoints };
