@@ -17,7 +17,7 @@ const client = new Client({
 const userPoints = new Map();
 let activeGame = null;
 
-// قائمة شاملة لجميع أعلام دول العالم مع رموز الدول
+// بنك أعلام دول العالم
 const allFlagsList = [
     { name: 'السعودية', code: 'sa' }, { name: 'الإمارات', code: 'ae' }, { name: 'الكويت', code: 'kw' },
     { name: 'قطر', code: 'qa' }, { name: 'البحرين', code: 'bh' }, { name: 'عمان', code: 'om' },
@@ -42,18 +42,26 @@ const allFlagsList = [
 ];
 
 let availableFlags = [...allFlagsList];
-
 function getRandomFlag() {
-    if (availableFlags.length === 0) {
-        availableFlags = [...allFlagsList];
-    }
-    const randomIndex = Math.floor(Math.random() * availableFlags.length);
-    const selectedFlag = availableFlags[randomIndex];
-    availableFlags.splice(randomIndex, 1);
-    return selectedFlag;
+    if (availableFlags.length === 0) availableFlags = [...allFlagsList];
+    const index = Math.floor(Math.random() * availableFlags.length);
+    return availableFlags.splice(index, 1)[0];
 }
 
-const speedWords = ['برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 'فوز', 'لعبة'];
+// بنك كلمات لعبة السرعة
+const speedWords = ['برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 'فوز', 'لعبة', 'حاسب', 'شبكة', 'تطبيق'];
+
+// بنك كلمات لعبة فك الكلمات (المبعثرة) ولعبة أدمج الحروف
+const wordBank = [
+    { original: 'ديسكورد', scramble: 'د ي س ك و ر د', merged: 'د ي س ك و ر د' },
+    { original: 'تحدي', scramble: 'ت ح د ي', merged: 'ت ح د ي' },
+    { original: 'برمجة', code: 'ب ر م ج ة', merged: 'ب ر م ج ة' },
+    { original: 'كمبيوتر', scramble: 'ك م ب ي و ت ر', merged: 'ك م ب ي و ت ر' },
+    { original: 'بطولة', scramble: 'ب ط و ل ة', merged: 'ب ط و ل ة' },
+    { original: 'سيرفر', scramble: 'س ي ر ف ر', merged: 'س ي ر ف ر' },
+    { original: 'جاهز', scramble: 'ج ا ه ز', merged: 'ج ا ه ز' },
+    { original: 'محترف', scramble: 'م ح ت ر ف', merged: 'م ح ت ر ف' }
+];
 
 const commands = [
     new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة'),
@@ -108,10 +116,9 @@ client.once('ready', async () => {
     }
 });
 
-// دالة مسؤولة عن إرسال علم جديد وتفعيل مؤقت الـ 15 ثانية
+// دالة إرسال علم جديد مع مؤقت 15 ثانية
 async function sendNextFlag(channel, points) {
-    if (!activeGame || activeGame.type !== 'علامات') return;
-
+    if (!activeGame || activeGame.type !== 'أعلام') return;
     if (activeGame.timer) clearTimeout(activeGame.timer);
 
     const randomFlag = getRandomFlag();
@@ -127,10 +134,8 @@ async function sendNextFlag(channel, points) {
     activeGame.messageId = sentMessage.id;
 
     activeGame.timer = setTimeout(async () => {
-        if (!activeGame || activeGame.type !== 'علامات') return;
-        
+        if (!activeGame || activeGame.type !== 'أعلام') return;
         await channel.send(`⏰ انتهى الوقت! لم يقدم أحد الإجابة الصحيحة. الإجابة كانت: **${randomFlag.name}**`);
-        
         sendNextFlag(channel, points);
     }, 15000);
 }
@@ -144,30 +149,43 @@ client.on('messageCreate', async message => {
         return message.reply('تم إيقاف اللعبة.');
     }
 
-    if (activeGame && message.content.trim() === activeGame.answer) {
-        const userId = message.author.id;
-        const currentPoints = userPoints.get(userId) || 0;
-        const totalPoints = currentPoints + activeGame.points;
-        
-        userPoints.set(userId, totalPoints);
+    if (activeGame) {
+        const userAns = message.content.trim().replace(/\s+/g, '');
+        const correctAns = activeGame.answer.trim().replace(/\s+/g, '');
 
-        if (activeGame.type === 'سرعة') {
-            await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
-            const randomWord = speedWords[Math.floor(Math.random() * speedWords.length)];
-            activeGame.answer = randomWord;
-            return message.channel.send(`الكلمة التالية:\n\`\`\`fix\n${randomWord}\n\`\`\``);
+        if (userAns === correctAns) {
+            const userId = message.author.id;
+            const currentPoints = userPoints.get(userId) || 0;
+            const totalPoints = currentPoints + activeGame.points;
+            userPoints.set(userId, totalPoints);
+
+            if (activeGame.type === 'سرعة') {
+                await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
+                const randomWord = speedWords[Math.floor(Math.random() * speedWords.length)];
+                activeGame.answer = randomWord;
+                return message.channel.send(`الكلمة التالية:\n\`\`\`fix\n${randomWord}\n\`\`\``);
+            }
+
+            if (activeGame.type === 'فك') {
+                await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
+                const randomItem = wordBank[Math.floor(Math.random() * wordBank.length)];
+                activeGame.answer = randomItem.original;
+                return message.channel.send(`لعبة فك الكلمات بدأت! الكلمة:\n\`\`\`fix\n${randomItem.scramble}\n\`\`\` - النقاط: ${activeGame.points}`);
+            }
+
+            if (activeGame.type === 'أدمج') {
+                await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
+                const randomItem = wordBank[Math.floor(Math.random() * wordBank.length)];
+                activeGame.answer = randomItem.original;
+                return message.channel.send(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\n${randomItem.merged}\n\`\`\` - النقاط: ${activeGame.points}`);
+            }
+
+            if (activeGame.type === 'أعلام') {
+                if (activeGame.timer) clearTimeout(activeGame.timer);
+                await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
+                return sendNextFlag(message.channel, activeGame.points);
+            }
         }
-
-        if (activeGame.type === 'علامات') {
-            if (activeGame.timer) clearTimeout(activeGame.timer);
-
-            await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
-            
-            return sendNextFlag(message.channel, activeGame.points);
-        }
-
-        activeGame = null;
-        await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
     }
 });
 
@@ -244,15 +262,17 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply(`لعبة السرعة بدأت! الكلمة:\n\`\`\`fix\n${firstWord}\n\`\`\``);
         } 
         else if (gameType === 'فك') {
-            activeGame = { type: 'فك', answer: 'ديسكورد', points: customPoints };
-            await interaction.reply(`لعبة فك الكلمات بدأت! الكلمة:\n\`\`\`fix\nديسكورد\n\`\`\` - النقاط: ${customPoints}`);
+            const randomItem = wordBank[Math.floor(Math.random() * wordBank.length)];
+            activeGame = { type: 'فك', answer: randomItem.original, points: customPoints };
+            await interaction.reply(`لعبة فك الكلمات بدأت! الكلمة:\n\`\`\`fix\n${randomItem.scramble}\n\`\`\` - النقاط: ${customPoints}`);
         } 
         else if (gameType === 'أدمج') {
-            activeGame = { type: 'أدمج', answer: 'تحدي', points: customPoints };
-            await interaction.reply(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\nت ح د ي\n\`\`\` - النقاط: ${customPoints}`);
+            const randomItem = wordBank[Math.floor(Math.random() * wordBank.length)];
+            activeGame = { type: 'أدمج', answer: randomItem.original, points: customPoints };
+            await interaction.reply(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\n${randomItem.merged}\n\`\`\` - النقاط: ${customPoints}`);
         }
         else if (gameType === 'أعلام') {
-            activeGame = { type: 'علامات', points: customPoints };
+            activeGame = { type: 'أعلام', points: customPoints };
             await interaction.reply('🎮 سيتم بدء أعلام...');
             await sendNextFlag(interaction.channel, customPoints);
         }
