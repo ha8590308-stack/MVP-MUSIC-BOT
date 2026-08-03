@@ -126,8 +126,52 @@ client.once('ready', async () => {
     }
 });
 
-// دالة إرسال علم جديد
-async function sendNextFlag(channel, points) {
+// دالة مؤقت الألعاب النصية (سرعة، فك، أدمج) - 30 ثانية
+function setGameTimeout(channel) {
+    if (activeGame && activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
+    
+    activeGame.timeoutTimer = setTimeout(async () => {
+        if (!activeGame) return;
+        activeGame.missedCount = (activeGame.missedCount || 0) + 1;
+
+        if (activeGame.missedCount >= 2) {
+            await channel.send(`⏰ انتهى الوقت! لم يتفاعل أحد مرتين متتاليتين، تم إيقاف اللعبة.`);
+            activeGame = null;
+        } else {
+            await channel.send(`⏰ انتهى الوقت! لم يقدم أحد الإجابة، جاري إرسال كلمة أخرى...`);
+            const nextWord = getUniqueWord();
+            
+            if (activeGame.type === 'سرعة') {
+                activeGame.answer = nextWord;
+                setGameTimeout(channel);
+                const embed = new EmbedBuilder()
+                    .setColor(0x57F287)
+                    .setTitle('سرعة')
+                    .setDescription(`أسرع شخص يكتب الكلمة الموجودة تحت يفوز في اللعبة\n\n# ${nextWord}\n\n*(النقاط: ${activeGame.points})*`);
+                return channel.send({ embeds: [embed] });
+            } else if (activeGame.type === 'فك') {
+                activeGame.answer = makeSpaced(nextWord);
+                setGameTimeout(channel);
+                const embed = new EmbedBuilder()
+                    .setColor(0xFEE75C)
+                    .setTitle('فك الكلمات')
+                    .setDescription(`أسرع شخص يفكك الكلمة التالية:\n\n# ${nextWord}\n\n*(النقاط: ${activeGame.points})*`);
+                return channel.send({ embeds: [embed] });
+            } else if (activeGame.type === 'أدمج') {
+                activeGame.answer = nextWord;
+                setGameTimeout(channel);
+                const embed = new EmbedBuilder()
+                    .setColor(0x5865F2)
+                    .setTitle('أدمج الحروف')
+                    .setDescription(`أسرع شخص يدمج الحروف لتصبح كلمة:\n\n# ${makeSpaced(nextWord)}\n\n*(النقاط: ${activeGame.points})*`);
+                return channel.send({ embeds: [embed] });
+            }
+        }
+    }, 30000);
+}
+
+// دالة إرسال علم جديد (30 ثانية)
+async function sendNextFlag(channel) {
     if (!activeGame || activeGame.type !== 'أعلام') return;
     if (activeGame.timer) clearTimeout(activeGame.timer);
 
@@ -145,16 +189,26 @@ async function sendNextFlag(channel, points) {
 
     activeGame.timer = setTimeout(async () => {
         if (!activeGame || activeGame.type !== 'أعلام') return;
-        await channel.send(`⏰ انتهى الوقت! لم يقدم أحد الإجابة الصحيحة. الإجابة كانت: **${randomFlag.name}**`);
-        sendNextFlag(channel, points);
-    }, 15000);
+        activeGame.missedCount = (activeGame.missedCount || 0) + 1;
+
+        if (activeGame.missedCount >= 2) {
+            await channel.send(`⏰ انتهى الوقت! لم يقدم أحد الإجابة الصحيحة مرتين متتاليتين. الإجابة كانت: **${randomFlag.name}**\nتم إيقاف اللعبة.`);
+            activeGame = null;
+        } else {
+            await channel.send(`⏰ انتهى الوقت! لم يقدم أحد الإجابة الصحيحة. الإجابة كانت: **${randomFlag.name}**\nجاري إرسال علم جديد...`);
+            sendNextFlag(channel);
+        }
+    }, 30000);
 }
 
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     if (message.content === 'وقف' || message.content === '/stop') {
-        if (activeGame && activeGame.timer) clearTimeout(activeGame.timer);
+        if (activeGame) {
+            if (activeGame.timer) clearTimeout(activeGame.timer);
+            if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
+        }
         activeGame = null;
         return message.reply('تم إيقاف اللعبة.');
     }
@@ -164,6 +218,9 @@ client.on('messageCreate', async message => {
         let correctAns = activeGame.answer.trim().replace(/\s+/g, '').replace(/أ|إ|آ/g, 'ا');
 
         if (userAns === correctAns) {
+            // تصفير عداد الخمول لأن أحد تفاعل وجاوب صح
+            activeGame.missedCount = 0;
+
             const userId = message.author.id;
             const currentPoints = userPoints.get(userId) || 0;
             const totalPoints = currentPoints + activeGame.points;
@@ -173,6 +230,7 @@ client.on('messageCreate', async message => {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
                 const nextWord = getUniqueWord();
                 activeGame.answer = nextWord;
+                setGameTimeout(message.channel);
                 const embed = new EmbedBuilder()
                     .setColor(0x57F287)
                     .setTitle('سرعة')
@@ -184,6 +242,7 @@ client.on('messageCreate', async message => {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
                 const nextWord = getUniqueWord();
                 activeGame.answer = makeSpaced(nextWord);
+                setGameTimeout(message.channel);
                 const embed = new EmbedBuilder()
                     .setColor(0xFEE75C)
                     .setTitle('فك الكلمات')
@@ -195,6 +254,7 @@ client.on('messageCreate', async message => {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
                 const nextWord = getUniqueWord();
                 activeGame.answer = nextWord;
+                setGameTimeout(message.channel);
                 const embed = new EmbedBuilder()
                     .setColor(0x5865F2)
                     .setTitle('أدمج الحروف')
@@ -205,7 +265,7 @@ client.on('messageCreate', async message => {
             if (activeGame.type === 'أعلام') {
                 if (activeGame.timer) clearTimeout(activeGame.timer);
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
-                return sendNextFlag(message.channel, activeGame.points);
+                return sendNextFlag(message.channel);
             }
         }
     }
@@ -234,7 +294,10 @@ client.on('interactionCreate', async interaction => {
         const gameType = interaction.options.getString('game');
         const customPoints = interaction.options.getInteger('points');
 
-        if (activeGame && activeGame.timer) clearTimeout(activeGame.timer);
+        if (activeGame) {
+            if (activeGame.timer) clearTimeout(activeGame.timer);
+            if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
+        }
 
         if (gameType === 'روليت') {
             const participants = new Set();
@@ -280,7 +343,8 @@ client.on('interactionCreate', async interaction => {
 
         if (gameType === 'سرعة') {
             const word = getUniqueWord();
-            activeGame = { type: 'سرعة', answer: word, points: customPoints };
+            activeGame = { type: 'سرعة', answer: word, points: customPoints, missedCount: 0 };
+            setGameTimeout(interaction.channel);
             const embed = new EmbedBuilder()
                 .setColor(0x57F287)
                 .setTitle('سرعة')
@@ -289,7 +353,8 @@ client.on('interactionCreate', async interaction => {
         } 
         else if (gameType === 'فك') {
             const word = getUniqueWord();
-            activeGame = { type: 'فك', answer: makeSpaced(word), points: customPoints };
+            activeGame = { type: 'فك', answer: makeSpaced(word), points: customPoints, missedCount: 0 };
+            setGameTimeout(interaction.channel);
             const embed = new EmbedBuilder()
                 .setColor(0xFEE75C)
                 .setTitle('فك الكلمات')
@@ -298,7 +363,8 @@ client.on('interactionCreate', async interaction => {
         } 
         else if (gameType === 'أدمج') {
             const word = getUniqueWord();
-            activeGame = { type: 'أدمج', answer: word, points: customPoints };
+            activeGame = { type: 'أدمج', answer: word, points: customPoints, missedCount: 0 };
+            setGameTimeout(interaction.channel);
             const embed = new EmbedBuilder()
                 .setColor(0x5865F2)
                 .setTitle('أدمج الحروف')
@@ -306,13 +372,16 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
         else if (gameType === 'أعلام') {
-            activeGame = { type: 'أعلام', points: customPoints };
+            activeGame = { type: 'أعلام', points: customPoints, missedCount: 0 };
             await interaction.reply('🎮 جاري بدء لعبة الأعلام...');
-            await sendNextFlag(interaction.channel, customPoints);
+            await sendNextFlag(interaction.channel);
         }
     }
     else if (commandName === 'stop') {
-        if (activeGame && activeGame.timer) clearTimeout(activeGame.timer);
+        if (activeGame) {
+            if (activeGame.timer) clearTimeout(activeGame.timer);
+            if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
+        }
         activeGame = null;
         await interaction.reply('تم إيقاف اللعبة.');
     }
