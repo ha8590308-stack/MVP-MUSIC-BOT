@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const express = require('express');
 
 const app = express();
@@ -78,7 +78,7 @@ function isStaff(member) {
     return hasAdmin || hasCustomRole;
 }
 
-// ==================== تعريف الأوامر بالكامل (مع /addpoints و /setrole) ====================
+// ==================== تعريف الأوامر بالكامل ====================
 
 const commands = [
     new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة'),
@@ -147,7 +147,7 @@ client.once('ready', async () => {
     console.log(`✅ تم تسجيل الدخول باسم: ${client.user.tag}`);
     try {
         await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-        console.log('✨ تم تحديث جميع الأوامر بنجاح بما فيها /addpoints و /setrole.');
+        console.log('✨ تم تحديث الأوامر بنجاح.');
     } catch (error) {
         console.error('❌ خطأ في تحديث الأوامر:', error);
     }
@@ -231,7 +231,7 @@ async function sendNextFlag(channel) {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // أمر "وقف" بالشات (محمي للمشرفين أو رول التحكم)
+    // أمر "وقف" بالشات
     if (message.content === 'وقف') {
         if (!isStaff(message.member)) {
             return message.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم المخصص فقط!', ephemeral: true });
@@ -244,7 +244,7 @@ client.on('messageCreate', async message => {
         return message.reply('تم إيقاف اللعبة.');
     }
 
-    // أمر "توب" بالشات (متاح للجميع بدون استثناء، ويظهر شعار واسم سيرفر MVP فوق يسار)
+    // أمر "توب" بالشات
     if (message.content === 'توب') {
         if (userPoints.size === 0) {
             return message.reply('لا توجد أي نقاط مسجلة حتى الآن!');
@@ -334,168 +334,265 @@ client.on('messageCreate', async message => {
 });
 
 client.on('interactionCreate', async interaction => {
-    if (!interaction.isChatInputCommand()) return;
-    const { commandName } = interaction;
+    if (interaction.isChatInputCommand()) {
+        const { commandName } = interaction;
 
-    if (commandName === 'help') {
-        const helpEmbed = new EmbedBuilder()
-            .setTitle('قائمة الأوامر')
-            .setColor(0x0099FF)
-            .addFields(
-                { name: '/play', value: 'بدء لعبة وتحديد النقاط' },
-                { name: '/stop', value: 'إيقاف اللعبة' },
-                { name: '/games', value: 'عرض الألعاب' },
-                { name: '/points', value: 'عرض النقاط' },
-                { name: '/addpoints', value: 'إضافة نقاط لعضو محدد' },
-                { name: '/setrole', value: 'تحديد رول التحكم المخصص (خاص بالأدمن)' }
-            );
-        await interaction.reply({ embeds: [helpEmbed] });
-    } 
-    else if (commandName === 'games') {
-        await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\` | \`روليت\``);
-    } 
-    else if (commandName === 'setrole') {
-        if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-            return interaction.reply({ content: '❌ هذا الأمر مخصص لمسؤولي السيرفر (Administrator) فقط!', ephemeral: true });
+        if (commandName === 'help') {
+            const helpEmbed = new EmbedBuilder()
+                .setTitle('قائمة الأوامر')
+                .setColor(0x0099FF)
+                .addFields(
+                    { name: '/play', value: 'بدء لعبة وتحديد النقاط' },
+                    { name: '/stop', value: 'إيقاف اللعبة' },
+                    { name: '/games', value: 'عرض الألعاب' },
+                    { name: '/points', value: 'عرض النقاط' },
+                    { name: '/addpoints', value: 'إضافة نقاط لعضو محدد' },
+                    { name: '/setrole', value: 'تحديد رول التحكم المخصص (خاص بالأدمن)' }
+                );
+            await interaction.reply({ embeds: [helpEmbed] });
+        } 
+        else if (commandName === 'games') {
+            await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\` | \`روليت\``);
+        } 
+        else if (commandName === 'setrole') {
+            if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                return interaction.reply({ content: '❌ هذا الأمر مخصص لمسؤولي السيرفر (Administrator) فقط!', ephemeral: true });
+            }
+            const role = interaction.options.getRole('role');
+            allowedRoleId = role.id;
+            await interaction.reply(`✅ تم تعيين رول <@&${role.id}> بنجاح! يمكن لأصحاب هذا الرول الآن تشغيل وإيقاف الألعاب وإدارة النقاط.`);
         }
-        const role = interaction.options.getRole('role');
-        allowedRoleId = role.id;
-        await interaction.reply(`✅ تم تعيين رول <@&${role.id}> بنجاح! يمكن لأصحاب هذا الرول الآن تشغيل وإيقاف الألعاب وإدارة النقاط.`);
-    }
-    else if (commandName === 'play') {
-        if (!isStaff(interaction.member)) {
-            return interaction.reply({ content: '❌ ليس لديك الصلاحية لبدء الألعاب! يتطلب رول التحكم المخصص أو الإشراف.', ephemeral: true });
-        }
+        else if (commandName === 'play') {
+            if (!isStaff(interaction.member)) {
+                return interaction.reply({ content: '❌ ليس لديك الصلاحية لبدء الألعاب! يتطلب رول التحكم المخصص أو الإشراف.', ephemeral: true });
+            }
 
-        const gameType = interaction.options.getString('game');
-        const customPoints = interaction.options.getInteger('points');
+            const gameType = interaction.options.getString('game');
+            const customPoints = interaction.options.getInteger('points');
 
-        if (activeGame) {
-            if (activeGame.timer) clearTimeout(activeGame.timer);
-            if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
-        }
+            if (activeGame) {
+                if (activeGame.timer) clearTimeout(activeGame.timer);
+                if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
+            }
 
-        if (gameType === 'روليت') {
-            const participants = new Set();
-            const joinButton = new ButtonBuilder()
-                .setCustomId('join_roulette')
-                .setLabel('انضمام للعبة 🎮')
-                .setStyle(ButtonStyle.Success);
+            // ==================== لعبة الروليت (الشخصنة والحقد) ====================
+            if (gameType === 'روليت') {
+                const participants = new Set();
+                const joinButton = new ButtonBuilder()
+                    .setCustomId('join_roulette')
+                    .setLabel('انضمام للعبة 🎮')
+                    .setStyle(ButtonStyle.Success);
 
-            const row = new ActionRowBuilder().addComponents(joinButton);
-            const msg = await interaction.reply({ 
-                content: 'بدأت لعبة الروليت! اضغط على زر انضمام (لديك 10 ثوانٍ):', 
-                components: [row], 
-                fetchReply: true 
-            });
+                const row = new ActionRowBuilder().addComponents(joinButton);
+                
+                const rouletteEmbed = new EmbedBuilder()
+                    .setColor(0x5865F2)
+                    .setTitle('🎰 لعبة الروليت (دائرة الحقد والشخصنة)')
+                    .setDescription('**بدأت لعبة الروليت! اضغط على زر "انضمام للعبة" بالأسفل للدخول.**\n⏳ لديك **15 ثانية** للتسجيل قبل دوران الدائرة!');
 
-            const collector = msg.createMessageComponentCollector({ time: 10000 });
-
-            collector.on('collect', async i => {
-                if (!participants.has(i.user.id)) {
-                    participants.add(i.user.id);
-                    await i.reply({ content: 'تم انضمامك بنجاح!', ephemeral: true });
-                } else {
-                    await i.reply({ content: 'أنت منضم مسبقاً!', ephemeral: true });
-                }
-            });
-
-            collector.on('end', async () => {
-                const players = Array.from(participants);
-                if (players.length === 0) {
-                    return interaction.editReply({ content: 'لم يشارك أحد في الروليت.', components: [] });
-                }
-                const winnerId = players[Math.floor(Math.random() * players.length)];
-                const currentPoints = userPoints.get(winnerId) || 0;
-                userPoints.set(winnerId, currentPoints + customPoints);
-
-                await interaction.editReply({ 
-                    content: `فاز <@${winnerId}> في الروليت وأخذ ${customPoints} نقطة.`, 
-                    components: [] 
+                const msg = await interaction.reply({ 
+                    embeds: [rouletteEmbed], 
+                    components: [row], 
+                    fetchReply: true 
                 });
-            });
-            return;
-        }
 
-        if (gameType === 'سرعة') {
-            const word = getUniqueWord();
-            activeGame = { type: 'سرعة', answer: word, points: customPoints, missedCount: 0 };
-            setGameTimeout(interaction.channel);
-            const embed = new EmbedBuilder()
-                .setColor(0x57F287)
-                .setTitle('سرعة')
-                .setDescription(`أسرع شخص يكتب الكلمة الموجودة تحت يفوز في اللعبة\n\n# ${word}\n\n*(النقاط: ${customPoints})*`);
-            await interaction.reply({ embeds: [embed] });
-        } 
-        else if (gameType === 'فك') {
-            const word = getUniqueWord();
-            activeGame = { type: 'فك', answer: makeSpaced(word), points: customPoints, missedCount: 0 };
-            setGameTimeout(interaction.channel);
-            const embed = new EmbedBuilder()
-                .setColor(0xFEE75C)
-                .setTitle('فك الكلمات')
-                .setDescription(`أسرع شخص يفكك الكلمة التالية:\n\n# ${word}\n\n*(النقاط: ${customPoints})*`);
-            await interaction.reply({ embeds: [embed] });
-        } 
-        else if (gameType === 'أدمج') {
-            const word = getUniqueWord();
-            activeGame = { type: 'أدمج', answer: word, points: customPoints, missedCount: 0 };
-            setGameTimeout(interaction.channel);
-            const embed = new EmbedBuilder()
-                .setColor(0x5865F2)
-                .setTitle('أدمج الحروف')
-                .setDescription(`أسرع شخص يدمج الحروف لتصبح كلمة:\n\n# ${makeSpaced(word)}\n\n*(النقاط: ${customPoints})*`);
-            await interaction.reply({ embeds: [embed] });
-        }
-        else if (gameType === 'أعلام') {
-            activeGame = { type: 'أعلام', points: customPoints, missedCount: 0 };
-            await interaction.reply('🎮 جاري بدء لعبة الأعلام...');
-            await sendNextFlag(interaction.channel);
-        }
-    }
-    else if (commandName === 'stop') {
-        if (!isStaff(interaction.member)) {
-            return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
-        }
-        if (activeGame) {
-            if (activeGame.timer) clearTimeout(activeGame.timer);
-            if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
-        }
-        activeGame = null;
-        await interaction.reply('تم إيقاف اللعبة.');
-    }
-    else if (commandName === 'points') {
-        const targetUser = interaction.options.getUser('user') || interaction.user;
-        const points = userPoints.get(targetUser.id) || 0;
-        await interaction.reply(`نقاط <@${targetUser.id}>: ${points}`);
-    }
-    else if (commandName === 'addpoints') {
-        if (!isStaff(interaction.member)) {
-            return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
-        }
-        const targetUser = interaction.options.getUser('user');
-        const pointsToAdd = interaction.options.getInteger('points');
-        
-        const currentPoints = userPoints.get(targetUser.id) || 0;
-        const newTotal = currentPoints + pointsToAdd;
-        userPoints.set(targetUser.id, newTotal);
+                const collector = msg.createMessageComponentCollector({ time: 15000 });
 
-        await interaction.reply(`✅ تم إضافة **${pointsToAdd}** نقطة بنجاح إلى العضو <@${targetUser.id}>! (إجمالي نقاطه الآن: **${newTotal}**).`);
-    }
-    else if (commandName === 'resetpoints') {
-        if (!isStaff(interaction.member)) {
-            return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
+                collector.on('collect', async i => {
+                    if (!participants.has(i.user.id)) {
+                        participants.add(i.user.id);
+                        await i.reply({ content: '✅ تم انضمامك إلى قائمة الروليت بنجاح!', ephemeral: true });
+                    } else {
+                        await i.reply({ content: '⚠️ أنت منضم مسبقاً في هذه اللعبة!', ephemeral: true });
+                    }
+                });
+
+                collector.on('end', async () => {
+                    let players = Array.from(participants);
+                    if (players.length === 0) {
+                        return interaction.editReply({ content: '⏰ انتهى الوقت! لم يشارك أحد في الروليت، تم إلغاء اللعبة.', embeds: [], components: [] });
+                    }
+
+                    if (players.length === 1) {
+                        const winnerId = players[0];
+                        const currentPoints = userPoints.get(winnerId) || 0;
+                        userPoints.set(winnerId, currentPoints + customPoints);
+                        return interaction.editReply({ 
+                            content: `👑 لم يشارك سوى لاعب واحد!\nفاز <@${winnerId}> تلقائياً في الروليت وأخذ **${customPoints}** نقطة!`, 
+                            embeds: [], 
+                            components: [] 
+                        });
+                    }
+
+                    await interaction.editReply({ 
+                        content: `🎡 **اكتمل العدد! بدأت دائرة الروليت بالتدوير...**\nالمشاركون (${players.length}): ${players.map(id => `<@${id}>`).join(', ')}`, 
+                        embeds: [], 
+                        components: [] 
+                    });
+
+                    // دالة الجولات التفاعلية للشخصنة
+                    const runRouletteRound = async () => {
+                        if (players.length <= 1) {
+                            const winnerId = players[0];
+                            const currentPoints = userPoints.get(winnerId) || 0;
+                            userPoints.set(winnerId, currentPoints + customPoints);
+                            return interaction.followUp({ 
+                                content: `🏆 **انتهت اللعبة!**\nالصمود الأخير للبطل <@${winnerId}> وفاز بـ **${customPoints}** نقطة! 👑` 
+                            });
+                        }
+
+                        // اختيار لاعب عشوائي ليقف عليه السهم (هو الذي سيختار من يطرد)
+                        const luckyIndex = Math.floor(Math.random() * players.length);
+                        const luckyPlayerId = players[luckyIndex];
+
+                        // إنشاء قائمة منسدلة بأسماء البقية المتاح طردهم فقط
+                        const targetOptions = players
+                            .filter(id => id !== luckyPlayerId)
+                            .map(id => ({
+                                label: `طرد اللاعب (ID: ${id})`, // سيظهر في القائمة
+                                value: id,
+                                description: 'اختر هذا الشخص لجلده وإخراجه من الروليت!'
+                            }));
+
+                        const selectMenu = new StringSelectMenuBuilder()
+                            .setCustomId(`roulette_kick_${luckyPlayerId}`)
+                            .setPlaceholder('اختر شخصاً لطرده بحقد! 😈')
+                            .addOptions(targetOptions);
+
+                        const rowMenu = new ActionRowBuilder().addComponents(selectMenu);
+
+                        const turnMsg = await interaction.followUp({
+                            content: `🎯 **وقف السهم على:** <@${luckyPlayerId}>!\nيا <@${luckyPlayerId}>، أمامك **15 ثانية** لاختيار شخص ترسله للجحيم وتطرده من اللعبة! 😈`,
+                            components: [rowMenu]
+                        });
+
+                        // فلتر يسمح فقط للاعب الذي وقف عليه السهم بالاختيار
+                        const filter = i => i.user.id === luckyPlayerId && i.customId.startsWith('roulette_kick_');
+                        const choiceCollector = turnMsg.createMessageComponentCollector({ filter, time: 15000, max: 1 });
+
+                        let kickedId = null;
+
+                        choiceCollector.on('collect', async i => {
+                            kickedId = i.values[0];
+                            const kickedIndex = players.indexOf(kickedId);
+                            if (kickedIndex !== -1) {
+                                players.splice(kickedIndex, 1);
+                            }
+                            await i.update({ 
+                                content: `🔥 قام <@${luckyPlayerId}> باختيار وطرد <@${kickedId}> بكل برود! الباقون (${players.length}): ${players.map(id => `<@${id}>`).join(', ')}`, 
+                                components: [] 
+                            });
+                        });
+
+                        choiceCollector.on('end', async collected => {
+                            if (collected.size === 0) {
+                                // لو انتهى الوقت ولم يختار، نطرد شخصاً عشوائياً بدلاً عنه كعقاب لتأخره
+                                const aliveOthers = players.filter(id => id !== luckyPlayerId);
+                                if (aliveOthers.length > 0) {
+                                    const randomKickIndex = Math.floor(Math.random() * aliveOthers.length);
+                                    kickedId = aliveOthers[randomKickIndex];
+                                    const kickedIndex = players.indexOf(kickedId);
+                                    if (kickedIndex !== -1) {
+                                        players.splice(kickedIndex, 1);
+                                    }
+                                    await turnMsg.edit({
+                                        content: `⏰ انتهى الوقت ولم يختار <@${luckyPlayerId}>! تم طرد <@${kickedId}> تلقائياً بسبب تردده!\nالباقون (${players.length}): ${players.map(id => `<@${id}>`).join(', ')}`,
+                                        components: []
+                                    });
+                                }
+                            }
+
+                            // الانتقال للجولة التالية بعد ثانية
+                            setTimeout(runRouletteRound, 2000);
+                        });
+                    };
+
+                    // بدء الجولة الأولى بعد 3 ثوانٍ من إعلان الأسماء
+                    setTimeout(runRouletteRound, 3000);
+                });
+                return;
+            }
+
+            if (gameType === 'سرعة') {
+                const word = getUniqueWord();
+                activeGame = { type: 'سرعة', answer: word, points: customPoints, missedCount: 0 };
+                setGameTimeout(interaction.channel);
+                const embed = new EmbedBuilder()
+                    .setColor(0x57F287)
+                    .setTitle('سرعة')
+                    .setDescription(`أسرع شخص يكتب الكلمة الموجودة تحت يفوز في اللعبة\n\n# ${word}\n\n*(النقاط: ${customPoints})*`);
+                await interaction.reply({ embeds: [embed] });
+            } 
+            else if (gameType === 'فك') {
+                const word = getUniqueWord();
+                activeGame = { type: 'فك', answer: makeSpaced(word), points: customPoints, missedCount: 0 };
+                setGameTimeout(interaction.channel);
+                const embed = new EmbedBuilder()
+                    .setColor(0xFEE75C)
+                    .setTitle('فك الكلمات')
+                    .setDescription(`أسرع شخص يفكك الكلمة التالية:\n\n# ${word}\n\n*(النقاط: ${customPoints})*`);
+                await interaction.reply({ embeds: [embed] });
+            } 
+            else if (gameType === 'أدمج') {
+                const word = getUniqueWord();
+                activeGame = { type: 'أدمج', answer: word, points: customPoints, missedCount: 0 };
+                setGameTimeout(interaction.channel);
+                const embed = new EmbedBuilder()
+                    .setColor(0x5865F2)
+                    .setTitle('أدمج الحروف')
+                    .setDescription(`أسرع شخص يدمج الحروف لتصبح كلمة:\n\n# ${makeSpaced(word)}\n\n*(النقاط: ${customPoints})*`);
+                await interaction.reply({ embeds: [embed] });
+            }
+            else if (gameType === 'أعلام') {
+                activeGame = { type: 'أعلام', points: customPoints, missedCount: 0 };
+                await interaction.reply('🎮 جاري بدء لعبة الأعلام...');
+                await sendNextFlag(interaction.channel);
+            }
         }
-        const targetUser = interaction.options.getUser('user');
-        userPoints.set(targetUser.id, 0);
-        await interaction.reply(`تم تصفير نقاط <@${targetUser.id}>.`);
-    }
-    else if (commandName === 'resetallpoints') {
-        if (!isStaff(interaction.member)) {
-            return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
+        else if (commandName === 'stop') {
+            if (!isStaff(interaction.member)) {
+                return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
+            }
+            if (activeGame) {
+                if (activeGame.timer) clearTimeout(activeGame.timer);
+                if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
+            }
+            activeGame = null;
+            await interaction.reply('تم إيقاف اللعبة.');
         }
-        userPoints.clear();
-        await interaction.reply('تم تصفير نقاط الجميع.');
+        else if (commandName === 'points') {
+            const targetUser = interaction.options.getUser('user') || interaction.user;
+            const points = userPoints.get(targetUser.id) || 0;
+            await interaction.reply(`نقاط <@${targetUser.id}>: ${points}`);
+        }
+        else if (commandName === 'addpoints') {
+            if (!isStaff(interaction.member)) {
+                return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
+            }
+            const targetUser = interaction.options.getUser('user');
+            const pointsToAdd = interaction.options.getInteger('points');
+            
+            const currentPoints = userPoints.get(targetUser.id) || 0;
+            const newTotal = currentPoints + pointsToAdd;
+            userPoints.set(targetUser.id, newTotal);
+
+            await interaction.reply(`✅ تم إضافة **${pointsToAdd}** نقطة بنجاح إلى العضو <@${targetUser.id}>! (إجمالي نقاطه الآن: **${newTotal}**).`);
+        }
+        else if (commandName === 'resetpoints') {
+            if (!isStaff(interaction.member)) {
+                return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
+            }
+            const targetUser = interaction.options.getUser('user');
+            userPoints.set(targetUser.id, 0);
+            await interaction.reply(`تم تصفير نقاط <@${targetUser.id}>.`);
+        }
+        else if (commandName === 'resetallpoints') {
+            if (!isStaff(interaction.member)) {
+                return interaction.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم فقط!', ephemeral: true });
+            }
+            userPoints.clear();
+            await interaction.reply('تم تصفير نقاط الجميع.');
+        }
     }
 });
 
