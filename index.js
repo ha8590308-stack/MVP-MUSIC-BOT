@@ -112,7 +112,6 @@ client.once('ready', async () => {
 async function sendNextFlag(channel, points) {
     if (!activeGame || activeGame.type !== 'علامات') return;
 
-    // إلغاء أي مؤقت قديم لمنع التداخل
     if (activeGame.timer) clearTimeout(activeGame.timer);
 
     const randomFlag = getRandomFlag();
@@ -121,19 +120,17 @@ async function sendNextFlag(channel, points) {
     const flagEmbed = new EmbedBuilder()
         .setColor(0xED4245)
         .setTitle('أعلام')
-        .setDescription('أسرع شخص يخمن اسم العلم الموجود تحت يفوز في اللعبة ❌ لا يوجد اي فائز')
+        .setDescription('أسرع شخص يخمن اسم العلم الموجود تحت يفوز في اللعبة')
         .setImage(`https://flagcdn.com/w640/${randomFlag.code}.png`);
 
     const sentMessage = await channel.send({ embeds: [flagEmbed] });
     activeGame.messageId = sentMessage.id;
 
-    // مؤقت الـ 15 ثانية
     activeGame.timer = setTimeout(async () => {
         if (!activeGame || activeGame.type !== 'علامات') return;
         
         await channel.send(`⏰ انتهى الوقت! لم يقدم أحد الإجابة الصحيحة. الإجابة كانت: **${randomFlag.name}**`);
         
-        // الانتقال تلقائياً للعلم التالي
         sendNextFlag(channel, points);
     }, 15000);
 }
@@ -162,12 +159,10 @@ client.on('messageCreate', async message => {
         }
 
         if (activeGame.type === 'علامات') {
-            // إيقاف مؤقت الـ 15 ثانية لأن شخصاً ما أجاب بشكل صحيح
             if (activeGame.timer) clearTimeout(activeGame.timer);
 
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
             
-            // الانتقال تلقائياً للعلم التالي بعد الإجابة الصحيحة
             return sendNextFlag(message.channel, activeGame.points);
         }
 
@@ -199,7 +194,6 @@ client.on('interactionCreate', async interaction => {
         const gameType = interaction.options.getString('game');
         const customPoints = interaction.options.getInteger('points');
 
-        // إذا كانت هناك لعبة قديمة تعمل، قم بإلغاء مؤقتها
         if (activeGame && activeGame.timer) clearTimeout(activeGame.timer);
 
         if (gameType === 'روليت') {
