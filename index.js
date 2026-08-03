@@ -51,19 +51,19 @@ function getRandomFlag() {
 // بنك كلمات لعبة السرعة
 const speedWords = ['برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 'فوز', 'لعبة', 'حاسب', 'شبكة', 'تطبيق'];
 
-// بنك لعبة فك الكلمات (متشابكة وملخبطة وبدون مسافات نهائياً)
-const unscrambleBank = [
-    { original: 'ديسكورد', scrambled: 'ديكورسد' },
-    { original: 'تحدي', scrambled: 'ديحت' },
-    { original: 'برمجة', scrambled: 'جبرمة' },
-    { original: 'كمبيوتر', scrambled: 'تربيوكم' },
-    { original: 'بطولة', scrambled: 'ةطولب' },
-    { original: 'سيرفر', scrambled: 'فرسير' },
-    { original: 'محترف', scrambled: 'فحترتم' },
-    { original: 'ديوانية', scrambled: 'ةينوايد' }
+// بنك كلمات لعبة فك (يعرض الكلمة سليمة، والإجابة المطلوبة حروفها مفرقة)
+const unfuckBank = [
+    { word: 'ديسكورد', spaced: 'د ي س ك و ر د' },
+    { word: 'تحدي', spaced: 'ت ح د ي' },
+    { word: 'برمجة', spaced: 'ب ر م ج ة' },
+    { word: 'كمبيوتر', spaced: 'ك م ب ي و ت ر' },
+    { word: 'بطولة', spaced: 'ب ط و ل ة' },
+    { word: 'سيرفر', spaced: 'س ي ر ف ر' },
+    { word: 'محترف', spaced: 'م ح ت ر ف' },
+    { word: 'ديوانية', spaced: 'د ي و ا ن ي ة' }
 ];
 
-// بنك لعبة أدمج الحروف (بحروف مفرقة وبها مسافات)
+// بنك لعبة أدمج الحروف (العكس: يعرض الحروف مفرقة، والإجابة كلمة متلاصقة)
 const mergeBank = [
     { original: 'ديسكورد', merged: 'د ي س ك و ر د' },
     { original: 'تحدي', merged: 'ت ح د ي' },
@@ -160,8 +160,8 @@ client.on('messageCreate', async message => {
     }
 
     if (activeGame) {
-        const userAns = message.content.trim().replace(/\s+/g, '');
-        const correctAns = activeGame.answer.trim().replace(/\s+/g, '');
+        let userAns = message.content.trim().replace(/\s+/g, '').replace(/أ|إ|آ/g, 'ا');
+        let correctAns = activeGame.answer.trim().replace(/\s+/g, '').replace(/أ|إ|آ/g, 'ا');
 
         if (userAns === correctAns) {
             const userId = message.author.id;
@@ -178,9 +178,9 @@ client.on('messageCreate', async message => {
 
             if (activeGame.type === 'فك') {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
-                const randomItem = unscrambleBank[Math.floor(Math.random() * unscrambleBank.length)];
-                activeGame.answer = randomItem.original;
-                return message.channel.send(`لعبة فك الكلمات بدأت! الكلمة:\n\`\`\`fix\n${randomItem.scrambled}\n\`\`\` - النقاط: ${activeGame.points}`);
+                const randomItem = unfuckBank[Math.floor(Math.random() * unfuckBank.length)];
+                activeGame.answer = randomItem.spaced; // الإجابة المطلوبة هي الحروف مفرقة
+                return message.channel.send(`لعبة فك الكلمات بدأت! فكك الكلمة:\n\`\`\`fix\n${randomItem.word}\n\`\`\` - النقاط: ${activeGame.points}`);
             }
 
             if (activeGame.type === 'أدمج') {
@@ -272,9 +272,9 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply(`لعبة السرعة بدأت! الكلمة:\n\`\`\`fix\n${firstWord}\n\`\`\``);
         } 
         else if (gameType === 'فك') {
-            const randomItem = unscrambleBank[Math.floor(Math.random() * unscrambleBank.length)];
-            activeGame = { type: 'فك', answer: randomItem.original, points: customPoints };
-            await interaction.reply(`لعبة فك الكلمات بدأت! الكلمة:\n\`\`\`fix\n${randomItem.scrambled}\n\`\`\` - النقاط: ${customPoints}`);
+            const randomItem = unfuckBank[Math.floor(Math.random() * unfuckBank.length)];
+            activeGame = { type: 'فك', answer: randomItem.spaced, points: customPoints };
+            await interaction.reply(`لعبة فك الكلمات بدأت! فكك الكلمة:\n\`\`\`fix\n${randomItem.word}\n\`\`\` - النقاط: ${customPoints}`);
         } 
         else if (gameType === 'أدمج') {
             const randomItem = mergeBank[Math.floor(Math.random() * mergeBank.length)];
