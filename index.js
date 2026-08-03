@@ -158,7 +158,7 @@ function setGameTimeout(channel) {
     if (activeGame && activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
     
     activeGame.timeoutTimer = setTimeout(async () => {
-        if (!activeGame) return;
+        if (!activeGame || activeGame.isProcessing) return; // منع التداخل
         activeGame.missedCount = (activeGame.missedCount || 0) + 1;
 
         if (activeGame.missedCount >= 2) {
@@ -167,6 +167,7 @@ function setGameTimeout(channel) {
         } else {
             await channel.send(`⏰ انتهى الوقت! لم يقدم أحد الإجابة، جاري إرسال كلمة أخرى...`);
             const nextWord = getUniqueWord();
+            activeGame.isProcessing = false; // إعادة ضبط القفل
             
             if (activeGame.type === 'سرعة') {
                 activeGame.answer = nextWord;
@@ -204,6 +205,7 @@ async function sendNextFlag(channel) {
 
     const randomFlag = getUniqueFlag();
     activeGame.answer = randomFlag.name;
+    activeGame.isProcessing = false; // إعادة ضبط القفل
 
     const flagEmbed = new EmbedBuilder()
         .setColor(0xED4245)
@@ -215,7 +217,7 @@ async function sendNextFlag(channel) {
     activeGame.messageId = sentMessage.id;
 
     activeGame.timer = setTimeout(async () => {
-        if (!activeGame || activeGame.type !== 'أعلام') return;
+        if (!activeGame || activeGame.type !== 'أعلام' || activeGame.isProcessing) return;
         activeGame.missedCount = (activeGame.missedCount || 0) + 1;
 
         if (activeGame.missedCount >= 2) {
@@ -277,10 +279,15 @@ client.on('messageCreate', async message => {
     }
 
     if (activeGame) {
+        // حماية تامة ضد التنافس اللحظي (إذا تم معالجة إجابة بالفعل في هذه الجولة، تجاهل البقية)
+        if (activeGame.isProcessing) return;
+
         let userAns = message.content.trim().replace(/\s+/g, '').replace(/أ|إ|آ/g, 'ا');
         let correctAns = activeGame.answer.trim().replace(/\s+/g, '').replace(/أ|إ|آ/g, 'ا');
 
         if (userAns === correctAns) {
+            // تفعيل القفل فوراً لمنع أي رسالة أخرى من معالجتها في نفس اللحظة
+            activeGame.isProcessing = true;
             activeGame.missedCount = 0;
 
             const userId = message.author.id;
@@ -288,10 +295,14 @@ client.on('messageCreate', async message => {
             const totalPoints = currentPoints + activeGame.points;
             userPoints.set(userId, totalPoints);
 
+            if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
+            if (activeGame.timer) clearTimeout(activeGame.timer);
+
             if (activeGame.type === 'سرعة') {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
                 const nextWord = getUniqueWord();
                 activeGame.answer = nextWord;
+                activeGame.isProcessing = false; // فك القفل للجولة القادمة
                 setGameTimeout(message.channel);
                 const embed = new EmbedBuilder()
                     .setColor(0x57F287)
@@ -304,6 +315,7 @@ client.on('messageCreate', async message => {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
                 const nextWord = getUniqueWord();
                 activeGame.answer = makeSpaced(nextWord);
+                activeGame.isProcessing = false; // فك القفل للجولة القادمة
                 setGameTimeout(message.channel);
                 const embed = new EmbedBuilder()
                     .setColor(0xFEE75C)
@@ -316,6 +328,7 @@ client.on('messageCreate', async message => {
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
                 const nextWord = getUniqueWord();
                 activeGame.answer = nextWord;
+                activeGame.isProcessing = false; // فك القفل للجولة القادمة
                 setGameTimeout(message.channel);
                 const embed = new EmbedBuilder()
                     .setColor(0x5865F2)
@@ -325,7 +338,6 @@ client.on('messageCreate', async message => {
             }
 
             if (activeGame.type === 'أعلام') {
-                if (activeGame.timer) clearTimeout(activeGame.timer);
                 await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
                 return sendNextFlag(message.channel);
             }
@@ -449,7 +461,7 @@ client.on('interactionCreate', async interaction => {
                         const targetOptions = players
                             .filter(id => id !== luckyPlayerId)
                             .map(id => ({
-                                label: `طرد اللاعب (ID: ${id})`, // سيظهر في القائمة
+                                label: `طرد اللاعب (ID: ${id})`, 
                                 value: id,
                                 description: 'اختر هذا الشخص لجلده وإخراجه من الروليت!'
                             }));
@@ -466,7 +478,6 @@ client.on('interactionCreate', async interaction => {
                             components: [rowMenu]
                         });
 
-                        // فلتر يسمح فقط للاعب الذي وقف عليه السهم بالاختيار
                         const filter = i => i.user.id === luckyPlayerId && i.customId.startsWith('roulette_kick_');
                         const choiceCollector = turnMsg.createMessageComponentCollector({ filter, time: 15000, max: 1 });
 
@@ -486,7 +497,6 @@ client.on('interactionCreate', async interaction => {
 
                         choiceCollector.on('end', async collected => {
                             if (collected.size === 0) {
-                                // لو انتهى الوقت ولم يختار، نطرد شخصاً عشوائياً بدلاً عنه كعقاب لتأخره
                                 const aliveOthers = players.filter(id => id !== luckyPlayerId);
                                 if (aliveOthers.length > 0) {
                                     const randomKickIndex = Math.floor(Math.random() * aliveOthers.length);
@@ -502,12 +512,10 @@ client.on('interactionCreate', async interaction => {
                                 }
                             }
 
-                            // الانتقال للجولة التالية بعد ثانية
                             setTimeout(runRouletteRound, 2000);
                         });
                     };
 
-                    // بدء الجولة الأولى بعد 3 ثوانٍ من إعلان الأسماء
                     setTimeout(runRouletteRound, 3000);
                 });
                 return;
@@ -515,7 +523,7 @@ client.on('interactionCreate', async interaction => {
 
             if (gameType === 'سرعة') {
                 const word = getUniqueWord();
-                activeGame = { type: 'سرعة', answer: word, points: customPoints, missedCount: 0 };
+                activeGame = { type: 'سرعة', answer: word, points: customPoints, missedCount: 0, isProcessing: false };
                 setGameTimeout(interaction.channel);
                 const embed = new EmbedBuilder()
                     .setColor(0x57F287)
@@ -525,7 +533,7 @@ client.on('interactionCreate', async interaction => {
             } 
             else if (gameType === 'فك') {
                 const word = getUniqueWord();
-                activeGame = { type: 'فك', answer: makeSpaced(word), points: customPoints, missedCount: 0 };
+                activeGame = { type: 'فك', answer: makeSpaced(word), points: customPoints, missedCount: 0, isProcessing: false };
                 setGameTimeout(interaction.channel);
                 const embed = new EmbedBuilder()
                     .setColor(0xFEE75C)
@@ -535,7 +543,7 @@ client.on('interactionCreate', async interaction => {
             } 
             else if (gameType === 'أدمج') {
                 const word = getUniqueWord();
-                activeGame = { type: 'أدمج', answer: word, points: customPoints, missedCount: 0 };
+                activeGame = { type: 'أدمج', answer: word, points: customPoints, missedCount: 0, isProcessing: false };
                 setGameTimeout(interaction.channel);
                 const embed = new EmbedBuilder()
                     .setColor(0x5865F2)
@@ -544,7 +552,7 @@ client.on('interactionCreate', async interaction => {
                 await interaction.reply({ embeds: [embed] });
             }
             else if (gameType === 'أعلام') {
-                activeGame = { type: 'أعلام', points: customPoints, missedCount: 0 };
+                activeGame = { type: 'أعلام', points: customPoints, missedCount: 0, isProcessing: false };
                 await interaction.reply('🎮 جاري بدء لعبة الأعلام...');
                 await sendNextFlag(interaction.channel);
             }
@@ -584,7 +592,7 @@ client.on('interactionCreate', async interaction => {
             }
             const targetUser = interaction.options.getUser('user');
             userPoints.set(targetUser.id, 0);
-            await interaction.reply(`تم تصفير نقاط <@${targetUser.id}>.`);
+            await interaction.reply(`تم تصفير نقاط <@$ {targetUser.id}>.`);
         }
         else if (commandName === 'resetallpoints') {
             if (!isStaff(interaction.member)) {
