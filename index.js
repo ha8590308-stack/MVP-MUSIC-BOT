@@ -118,6 +118,7 @@ function isStaff(member) {
     return hasAdmin || hasCustomRole;
 }
 
+// تصميم الروليت باللون الأزرق والأبيض النقي وبدون أي خلفيات سوداء
 async function drawSpinningWheel(players, clientInstance, guildId, centerUserId, currentRotation) {
     const width = 500;
     const height = 500;
@@ -129,10 +130,12 @@ async function drawSpinningWheel(players, clientInstance, guildId, centerUserId,
     const radius = 210;
     const sliceAngle = (2 * Math.PI) / players.length;
 
-    ctx.fillStyle = '#2b2d31';
+    // مسح الخلفية وتلوينها بلون أزرق نقي ومريح للعين تماماً
+    ctx.fillStyle = '#1e3a8a';
     ctx.fillRect(0, 0, width, height);
 
-    const sliceColors = ['#5865F2', '#3b82f6', '#1d4ed8', '#4f46e5', '#6366f1', '#2563eb'];
+    // تدرجات الألوان الزرقاء للأقسام
+    const sliceColors = ['#2563eb', '#3b82f6', '#1d4ed8', '#1e40af'];
 
     ctx.save();
     ctx.translate(centerX, centerY);
@@ -150,8 +153,10 @@ async function drawSpinningWheel(players, clientInstance, guildId, centerUserId,
 
         ctx.fillStyle = sliceColors[i % sliceColors.length];
         ctx.fill();
+        
+        // فواصل بيضاء واضحة جداً بين الأقسام
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 3.5;
         ctx.stroke();
 
         ctx.save();
@@ -162,7 +167,7 @@ async function drawSpinningWheel(players, clientInstance, guildId, centerUserId,
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 15px Arial';
+        ctx.font = 'bold 16px Arial';
         
         let displayName = players[i];
         try {
@@ -179,12 +184,14 @@ async function drawSpinningWheel(players, clientInstance, guildId, centerUserId,
     }
     ctx.restore();
 
+    // الإطار الخارجي للدائرة أبيض ناصع
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 5;
     ctx.stroke();
 
+    // الدائرة الوسطية (تظهر صورة الشخص فقط إذا توقفت العجلة عليه)
     const centerRadius = 55;
     ctx.save();
     ctx.beginPath();
@@ -209,23 +216,25 @@ async function drawSpinningWheel(players, clientInstance, guildId, centerUserId,
     }
 
     if (!drawnAvatar) {
-        ctx.fillStyle = '#1e293b';
+        ctx.fillStyle = '#1e3a8a';
         ctx.fillRect(centerX - centerRadius, centerY - centerRadius, centerRadius * 2, centerRadius * 2);
     }
     ctx.restore();
 
+    // إطار الدائرة الوسطية أبيض
     ctx.beginPath();
     ctx.arc(centerX, centerY, centerRadius, 0, 2 * Math.PI);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4;
     ctx.stroke();
 
+    // السهم المؤشر على اليمين
     ctx.beginPath();
     ctx.moveTo(width - 4, centerY - 15);
     ctx.lineTo(width - 28, centerY);
     ctx.lineTo(width - 4, centerY + 15);
     ctx.closePath();
-    ctx.fillStyle = '#facc15';
+    ctx.fillStyle = '#ffffff';
     ctx.fill();
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 1.5;
@@ -440,11 +449,11 @@ client.on('interactionCreate', async interaction => {
 
         if (gameType === 'روليت') {
             const participants = new Set();
-            const joinButton = new ButtonBuilder().setCustomId('join_roulette').setLabel('انضمام للعبة (اضغط هنا)').setStyle(ButtonStyle.Success);
+            const joinButton = new ButtonBuilder().setCustomId('join_roulette').setLabel('انضمام للعبة').setStyle(ButtonStyle.Success);
             const row = new ActionRowBuilder().addComponents(joinButton);
             
             const msg = await interaction.reply({ 
-                embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle('لعبة الروليت').setDescription('اضغط الزر أدناه للانضمام خلال 15 ثانية!')], 
+                embeds: [new EmbedBuilder().setColor(0x2563eb).setTitle('لعبة الروليت').setDescription('اضغط الزر أدناه للانضمام')], 
                 components: [row], 
                 fetchReply: true 
             });
@@ -453,7 +462,7 @@ client.on('interactionCreate', async interaction => {
             collector.on('collect', async i => {
                 if (!participants.has(i.user.id)) {
                     participants.add(i.user.id);
-                    await i.reply({ content: 'تم انضمامك بنجاح إلى العجلة.', ephemeral: true });
+                    await i.reply({ content: 'تم انضمامك بنجاح.', ephemeral: true });
                 } else {
                     await i.reply({ content: 'أنت منضم مسبقاً!', ephemeral: true });
                 }
@@ -468,7 +477,12 @@ client.on('interactionCreate', async interaction => {
                     return interaction.editReply({ content: `فاز اللاعب <@${players[0]}> تلقائياً بـ ${customPoints} نقطة لعدم وجود منافسين!`, embeds: [], components: [] });
                 }
 
-                await interaction.editReply({ content: `⏳ جاري تدوير العجلة...`, embeds: [], components: [] });
+                const playersListText = players.map(id => `<@${id}>`).join('\n');
+                await interaction.editReply({ 
+                    content: `تم انتهاء التسجيل، اللاعبون المشاركون:\n${playersListText}`, 
+                    embeds: [], 
+                    components: [] 
+                });
 
                 const runRouletteRound = async () => {
                     if (players.length <= 1) {
@@ -484,22 +498,21 @@ client.on('interactionCreate', async interaction => {
                     const finalTargetAngle = 6 * (2 * Math.PI) + (2 * Math.PI - (luckyPlayerIndex * sliceAngle + sliceAngle / 2));
 
                     let currentMsg = null;
-                    let steps = 4;
+                    let steps = 3;
 
                     for (let step = 1; step <= steps; step++) {
                         let partialAngle = (finalTargetAngle / steps) * step;
-                        let tempAttachment = await drawSpinningWheel(players, client, interaction.guildId, luckyPlayerId, partialAngle);
+                        let tempAttachment = await drawSpinningWheel(players, client, interaction.guildId, null, partialAngle);
                         
                         let tempEmbed = new EmbedBuilder()
-                            .setColor(0x5865F2)
-                            .setTitle('🎲 عجلة الروليت تدور...')
+                            .setColor(0x2563eb)
                             .setImage('attachment://wheel.png');
 
                         if (!currentMsg) {
-                            currentMsg = await interaction.followUp({ content: `🔄 العجلة تدور الآن...`, embeds: [tempEmbed], files: [tempAttachment], components: [] });
+                            currentMsg = await interaction.followUp({ embeds: [tempEmbed], files: [tempAttachment], components: [] });
                         } else {
                             try {
-                                currentMsg = await currentMsg.edit({ content: `🔄 العجلة تدور الآن... (خطوة ${step}/${steps})`, embeds: [tempEmbed], files: [tempAttachment], components: [] });
+                                currentMsg = await currentMsg.edit({ embeds: [tempEmbed], files: [tempAttachment], components: [] });
                             } catch (e) {}
                         }
                         await new Promise(r => setTimeout(r, 600));
@@ -507,13 +520,12 @@ client.on('interactionCreate', async interaction => {
 
                     let finalAttachment = await drawSpinningWheel(players, client, interaction.guildId, luckyPlayerId, finalTargetAngle);
                     let finalEmbed = new EmbedBuilder()
-                        .setColor(0x5865F2)
-                        .setTitle('🎲 عجلة الروليت')
+                        .setColor(0x2563eb)
                         .setImage('attachment://wheel.png');
 
                     try {
                         currentMsg = await currentMsg.edit({ 
-                            content: `🎯 استقرت العجلة على: <@${luckyPlayerId}>\nلديك 15 ثانية لاختيار لاعب لطرده 👢`, 
+                            content: `استقرت العجلة على: <@${luckyPlayerId}>`, 
                             embeds: [finalEmbed], 
                             files: [finalAttachment], 
                             components: [] 
@@ -522,7 +534,7 @@ client.on('interactionCreate', async interaction => {
 
                     const targetOptions = players.filter(id => id !== luckyPlayerId).map(id => ({ label: `طرد اللاعب`, value: id }));
                     if (targetOptions.length > 0) {
-                        const selectMenu = new StringSelectMenuBuilder().setCustomId(`kick_${luckyPlayerId}`).setPlaceholder('اختر لاعباً لطرده من العجلة').addOptions(targetOptions);
+                        const selectMenu = new StringSelectMenuBuilder().setCustomId(`kick_${luckyPlayerId}`).setPlaceholder('اختر لاعباً لطرده').addOptions(targetOptions);
                         try {
                             await currentMsg.edit({
                                 components: [new ActionRowBuilder().addComponents(selectMenu)]
@@ -533,14 +545,14 @@ client.on('interactionCreate', async interaction => {
                         choiceCollector.on('collect', async i => {
                             const kickedId = i.values[0];
                             players = players.filter(id => id !== kickedId);
-                            await i.update({ content: `تم طرد اللاعب <@${kickedId}> بنجاح من العجلة.`, embeds: [], files: [], components: [] });
+                            await i.update({ content: `تم طرد اللاعب <@${kickedId}>`, embeds: [], files: [], components: [] });
                         });
                         choiceCollector.on('end', async collected => {
                             if (collected.size === 0 && players.length > 1) {
                                 const kickedId = players.find(id => id !== luckyPlayerId);
                                 players = players.filter(id => id !== kickedId);
                                 try {
-                                    await currentMsg.edit({ content: `انتهى الوقت ولم يقم اللاعب بالخيار، تم طرد <@${kickedId}> تلقائياً.`, embeds: [], components: [], files: [] });
+                                    await currentMsg.edit({ content: `انتهى الوقت وتم طرد <@${kickedId}> تلقائياً`, embeds: [], components: [], files: [] });
                                 } catch (e) {}
                             }
                             setTimeout(runRouletteRound, 2000);
