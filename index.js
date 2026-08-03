@@ -34,10 +34,10 @@ const commands = [
         )
 ].map(command => command.toJSON());
 
-// استبدل هذه المتغيرات ببيانات بوتك الحقيقية
-const TOKEN = 'ضع_التوكن_هنا';
-const CLIENT_ID = 'ضع_أيدي_البوت_هنا';
-const GAME_CHANNEL_ID = 'ضع_أيدي_قناة_الألعاب_هنا'; // القناة المخصصة للألعاب
+// قراءة البيانات بأمان من متغيرات البيئة (Environment Variables) لحماية التوكن
+const TOKEN = process.env.DISCORD_TOKEN;
+const CLIENT_ID = process.env.1530851367558840422;
+const GAME_CHANNEL_ID = process.env.GAME_CHANNEL_ID;
 
 // تسجيل الأوامر عند تشغيل البوت
 const rest = new REST({ version: '10' }).setToken(TOKEN);
