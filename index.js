@@ -174,7 +174,7 @@ const commands = [
 ].map(command => command.toJSON());
 
 const TOKEN = process.env.DISCORD_TOKEN;
-const CLIENT_ID = '1533411298577088604';
+const CLIENT_ID = '1527850273672790056';
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 client.once('ready', async () => {
