@@ -118,7 +118,6 @@ function isStaff(member) {
     return hasAdmin || hasCustomRole;
 }
 
-// دالة رسم وتحريك عجلة الروليت باستخدام Canvas
 async function drawSpinningWheel(players, clientInstance, guildId, centerUserId, currentRotation) {
     const width = 500;
     const height = 500;
@@ -575,7 +574,7 @@ client.on('interactionCreate', async interaction => {
         activeGame = null;
         await interaction.reply('تم إيقاف اللعبة.');
     }
-    else if (commandName:: commandName === 'points') {
+    else if (commandName === 'points') {
         const target = interaction.options.getUser('user') || interaction.user;
         await interaction.reply(`نقاط <@${target.id}>: ${userPoints.get(target.id) || 0}`);
     }
