@@ -1,16 +1,6 @@
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const express = require('express');
 
-// التأكد من وجود المتغيرات الأساسية لمنع حدوث خطأ مفاجئ
-const TOKEN = process.env.DISCORD_TOKEN;
-const CLIENT_ID = process.env.CLIENT_ID;
-const GAME_CHANNEL_ID = process.env.GAME_CHANNEL_ID;
-
-if (!TOKEN || !CLIENT_ID || !GAME_CHANNEL_ID) {
-    console.error('❌ خطأ: يرجى التأكد من إضافة جميع متغيرات البيئة (DISCORD_TOKEN, CLIENT_ID, GAME_CHANNEL_ID) في لوحة تحكم Render!');
-    process.exit(1);
-}
-
 // إعداد سيرفر الويب البسيط لضمان بقاء البوت أونلاين على Render
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,6 +34,11 @@ const commands = [
         )
 ].map(command => command.toJSON());
 
+// التوكن وأيدي القناة مباشرة داخل الكود
+const TOKEN = process.env.DISCORD_TOKEN; // التوكن لا يزال أفضله ببيئة رندر للأمان
+const CLIENT_ID = '1530851367558840422'; // أيدي البوت/القناة حسب رغبتك
+const GAME_CHANNEL_ID = '1530851367558840422'; // أيدي قناة الألعاب اللي حددتها
+
 // تسجيل الأوامر عند تشغيل البوت
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
@@ -65,8 +60,7 @@ client.once('ready', async () => {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // التحقق مما إذا كان الأمر مستخدماً في قناة الألعاب المخصصة
-    if (interaction.channelId !== GAME_CHANNEL_ID) {
+    if (GAME_CHANNEL_ID && interaction.channelId !== GAME_CHANNEL_ID) {
         return interaction.reply({
             content: `⚠️ يرجى استخدام الأوامر داخل قناة الألعاب المخصصة <#${GAME_CHANNEL_ID}>`,
             ephemeral: true 
