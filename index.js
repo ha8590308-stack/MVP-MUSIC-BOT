@@ -78,7 +78,7 @@ function isStaff(member) {
     return hasAdmin || hasCustomRole;
 }
 
-// ==================== تعريف الأوامر بالكامل (مع /addpoints و /setrole) ====================
+// ==================== تعريف الأوامر بالكامل ====================
 
 const commands = [
     new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة'),
@@ -147,7 +147,7 @@ client.once('ready', async () => {
     console.log(`✅ تم تسجيل الدخول باسم: ${client.user.tag}`);
     try {
         await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-        console.log('✨ تم تحديث جميع الأوامر بنجاح بما فيها /addpoints و /setrole.');
+        console.log('✨ تم تحديث الأوامر بنجاح.');
     } catch (error) {
         console.error('❌ خطأ في تحديث الأوامر:', error);
     }
@@ -172,7 +172,7 @@ function setGameTimeout(channel) {
                 activeGame.answer = nextWord;
                 setGameTimeout(channel);
                 const embed = new EmbedBuilder()
-                    .setColor(0x57F287)
+                    .setColor(0x112233)
                     .setTitle('سرعة')
                     .setDescription(`أسرع شخص يكتب الكلمة الموجودة تحت يفوز في اللعبة\n\n# ${nextWord}\n\n*(النقاط: ${activeGame.points})*`);
                 return channel.send({ embeds: [embed] });
@@ -180,7 +180,7 @@ function setGameTimeout(channel) {
                 activeGame.answer = makeSpaced(nextWord);
                 setGameTimeout(channel);
                 const embed = new EmbedBuilder()
-                    .setColor(0xFEE75C)
+                    .setColor(0x112233)
                     .setTitle('فك الكلمات')
                     .setDescription(`أسرع شخص يفكك الكلمة التالية:\n\n# ${nextWord}\n\n*(النقاط: ${activeGame.points})*`);
                 return channel.send({ embeds: [embed] });
@@ -188,7 +188,7 @@ function setGameTimeout(channel) {
                 activeGame.answer = nextWord;
                 setGameTimeout(channel);
                 const embed = new EmbedBuilder()
-                    .setColor(0x5865F2)
+                    .setColor(0x112233)
                     .setTitle('أدمج الحروف')
                     .setDescription(`أسرع شخص يدمج الحروف لتصبح كلمة:\n\n# ${makeSpaced(nextWord)}\n\n*(النقاط: ${activeGame.points})*`);
                 return channel.send({ embeds: [embed] });
@@ -206,7 +206,7 @@ async function sendNextFlag(channel) {
     activeGame.answer = randomFlag.name;
 
     const flagEmbed = new EmbedBuilder()
-        .setColor(0xED4245)
+        .setColor(0x112233)
         .setTitle('🎮 لعبة الأعلام')
         .setDescription('**أسرع شخص يخمن اسم العلم الموجود بالأسفل!**')
         .setImage(`https://flagcdn.com/w640/${randomFlag.code}.png`);
@@ -244,7 +244,7 @@ client.on('messageCreate', async message => {
         return message.reply('تم إيقاف اللعبة.');
     }
 
-    // أمر "توب" بالشات (متاح للجميع بدون استثناء، ويظهر شعار واسم سيرفر MVP فوق يسار)
+    // أمر "توب" بالشات (بثيم وألوان السيرفر الفضائية والتروويز المأخوذة من الشعار، مع الأطر المنفصلة)
     if (message.content === 'توب') {
         if (userPoints.size === 0) {
             return message.reply('لا توجد أي نقاط مسجلة حتى الآن!');
@@ -255,22 +255,27 @@ client.on('messageCreate', async message => {
 
         let description = '';
         sortedUsers.forEach(([userId, points], index) => {
-            let medal = `#${index + 1}`;
-            if (index === 0) medal = '🥇';
-            else if (index === 1) medal = '🥈';
-            else if (index === 2) medal = '🥉';
+            let rankEmoji = `#${index + 1}`;
+            if (index === 0) rankEmoji = '🥇';
+            else if (index === 1) rankEmoji = '🥈';
+            else if (index === 2) rankEmoji = '🥉';
 
-            description += `${medal} | <@${userId}> ── **${points}** نقطة\n`;
+            // تصميم الأطر لكل شخصية بنفس الستايل المطلوب
+            description += `╭ ${rankEmoji} ── <@${userId}>\n╰ 💎 الرصيد: **${points}** نقطة\n\n`;
         });
 
         const guildName = message.guild ? message.guild.name : 'MVP';
-        const guildIcon = message.guild ? message.guild.iconURL({ dynamic: true }) : null;
+        const guildIcon = message.guild ? message.guild.iconURL({ dynamic: true, size: 1024 }) : null;
 
         const topEmbed = new EmbedBuilder()
-            .setColor(0xFEE75C)
-            .setAuthor({ name: guildName, iconURL: guildIcon })
-            .setTitle('🏆 قائمة صدارة الترتيب')
+            .setColor(0x0D2B3F) // لون داكن مستوحى من خلفية الفضاء وثيم السيرفر
+            .setAuthor({ 
+                name: `🌌 ${guildName} 🌌`, 
+                iconURL: guildIcon 
+            })
+            .setTitle('🏆 قـائمـة صـداره الـترتيـب')
             .setDescription(description)
+            .setFooter({ text: 'MVP System • ثيم السيرفر الرسمي' })
             .setTimestamp();
 
         return message.reply({ embeds: [topEmbed] });
@@ -294,7 +299,7 @@ client.on('messageCreate', async message => {
                 activeGame.answer = nextWord;
                 setGameTimeout(message.channel);
                 const embed = new EmbedBuilder()
-                    .setColor(0x57F287)
+                    .setColor(0x112233)
                     .setTitle('سرعة')
                     .setDescription(`أسرع شخص يكتب الكلمة الموجودة تحت يفوز في اللعبة\n\n# ${nextWord}\n\n*(النقاط: ${activeGame.points})*`);
                 return message.channel.send({ embeds: [embed] });
@@ -306,7 +311,7 @@ client.on('messageCreate', async message => {
                 activeGame.answer = makeSpaced(nextWord);
                 setGameTimeout(message.channel);
                 const embed = new EmbedBuilder()
-                    .setColor(0xFEE75C)
+                    .setColor(0x112233)
                     .setTitle('فك الكلمات')
                     .setDescription(`أسرع شخص يفكك الكلمة التالية:\n\n# ${nextWord}\n\n*(النقاط: ${activeGame.points})*`);
                 return message.channel.send({ embeds: [embed] });
@@ -318,7 +323,7 @@ client.on('messageCreate', async message => {
                 activeGame.answer = nextWord;
                 setGameTimeout(message.channel);
                 const embed = new EmbedBuilder()
-                    .setColor(0x5865F2)
+                    .setColor(0x112233)
                     .setTitle('أدمج الحروف')
                     .setDescription(`أسرع شخص يدمج الحروف لتصبح كلمة:\n\n# ${makeSpaced(nextWord)}\n\n*(النقاط: ${activeGame.points})*`);
                 return message.channel.send({ embeds: [embed] });
@@ -340,7 +345,7 @@ client.on('interactionCreate', async interaction => {
     if (commandName === 'help') {
         const helpEmbed = new EmbedBuilder()
             .setTitle('قائمة الأوامر')
-            .setColor(0x0099FF)
+            .setColor(0x0D2B3F)
             .addFields(
                 { name: '/play', value: 'بدء لعبة وتحديد النقاط' },
                 { name: '/stop', value: 'إيقاف اللعبة' },
@@ -422,7 +427,7 @@ client.on('interactionCreate', async interaction => {
             activeGame = { type: 'سرعة', answer: word, points: customPoints, missedCount: 0 };
             setGameTimeout(interaction.channel);
             const embed = new EmbedBuilder()
-                .setColor(0x57F287)
+                .setColor(0x112233)
                 .setTitle('سرعة')
                 .setDescription(`أسرع شخص يكتب الكلمة الموجودة تحت يفوز في اللعبة\n\n# ${word}\n\n*(النقاط: ${customPoints})*`);
             await interaction.reply({ embeds: [embed] });
@@ -432,7 +437,7 @@ client.on('interactionCreate', async interaction => {
             activeGame = { type: 'فك', answer: makeSpaced(word), points: customPoints, missedCount: 0 };
             setGameTimeout(interaction.channel);
             const embed = new EmbedBuilder()
-                .setColor(0xFEE75C)
+                .setColor(0x112233)
                 .setTitle('فك الكلمات')
                 .setDescription(`أسرع شخص يفكك الكلمة التالية:\n\n# ${word}\n\n*(النقاط: ${customPoints})*`);
             await interaction.reply({ embeds: [embed] });
@@ -442,7 +447,7 @@ client.on('interactionCreate', async interaction => {
             activeGame = { type: 'أدمج', answer: word, points: customPoints, missedCount: 0 };
             setGameTimeout(interaction.channel);
             const embed = new EmbedBuilder()
-                .setColor(0x5865F2)
+                .setColor(0x112233)
                 .setTitle('أدمج الحروف')
                 .setDescription(`أسرع شخص يدمج الحروف لتصبح كلمة:\n\n# ${makeSpaced(word)}\n\n*(النقاط: ${customPoints})*`);
             await interaction.reply({ embeds: [embed] });
