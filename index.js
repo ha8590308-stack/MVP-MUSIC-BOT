@@ -1,115 +1,100 @@
-const { Client, GatewayIntentBits } = require('discord.js');
-const { DisTube } = require('distube');
-const http = require('http');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const express = require('express');
 
-const TOKEN = process.env.TOKEN;
-const ALLOWED_CHANNEL_ID = '1527850274511917251';
+// إعداد سيرفر بسيط لضمان عدم نوم البوت على Render
+const app = express();
+const PORT = process.env.PORT || 3000;
+app.get('/', (req, res) => res.send('Bot is active and running!'));
+app.listen(PORT, () => console.log(`Web server is running on port ${PORT}`));
 
-// سيرفر إبقاء البوت شغال على Render
-http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.write('MVP Music Bot Online');
-    res.end();
-}).listen(process.env.PORT || 10000);
-
+// إعداد عميل ديسكورد والصلاحيات
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildVoiceStates
+        GatewayIntentBits.MessageContent
     ]
 });
 
-const distube = new DisTube(client, {
-    emitNewSongOnly: true,
-    savePreviousSongs: false,
-    nsfw: true
+// إعداد الأوامر باللغة العربية بالكامل
+const commands = [
+    new SlashCommandBuilder()
+        .setName('مساعدة')
+        .setDescription('إظهار قائمة المساعدة والأوامر العامة'),
+    new SlashCommandBuilder()
+        .setName('ألعاب')
+        .setDescription('عرض الألعاب المتوفرة في البوت'),
+    new SlashCommandBuilder()
+        .setName('لعب')
+        .setDescription('بدء لعبة جديدة')
+        .addStringOption(option =>
+            option.setName('نوع_اللعبة')
+                .setDescription('اختر اللعبة (سرعة، فك، أدمج، روليت)')
+                .setRequired(true)
+        )
+].map(command => command.toJSON());
+
+// استبدل هذه المتغيرات ببيانات بوتك الحقيقية
+const TOKEN = 'ضع_التوكن_هنا';
+const CLIENT_ID = 'ضع_أيدي_البوت_هنا';
+const GAME_CHANNEL_ID = 'ضع_أيدي_قناة_الألعاب_هنا'; // القناة المخصصة للألعاب
+
+// تسجيل الأوامر عند تشغيل البوت
+const rest = new REST({ version: '10' }).setToken(TOKEN);
+
+client.once('ready', async () => {
+    console.log(`Logged in as ${client.user.tag}!`);
+    try {
+        console.log('Started refreshing application (/) commands.');
+        await rest.put(
+            Routes.applicationCommands(CLIENT_ID),
+            { body: commands },
+        );
+        console.log('Successfully reloaded application (/) commands.');
+    } catch (error) {
+        console.error(error);
+    }
 });
 
-client.on('ready', () => {
-    console.log(`✅ البوت شغال وجاهز: ${client.user.tag}`);
-});
+// معالجة الأوامر والتأكد من القناة المخصصة
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isChatInputCommand()) return;
 
-client.on('messageCreate', async (message) => {
-    if (message.author.bot) return;
-    if (message.channel.id !== ALLOWED_CHANNEL_ID) return;
-
-    const text = message.content.trim();
-
-    // 1. أمر التشغيل الشامل
-    if (text.startsWith('ش ')) {
-        const voiceChannel = message.member.voice.channel;
-        if (!voiceChannel) {
-            return message.reply('❌ لازم تكون داخل روم صوتي أولاً!');
-        }
-
-        const query = text.slice(2).trim();
-        if (!query) return message.reply('❌ اكتب اسم الأغنية أو الرابط بعد حرف ش!');
-
-        try {
-            await distube.play(voiceChannel, query, {
-                textChannel: message.channel,
-                member: message.member
-            });
-            return message.react('✅').catch(() => {});
-        } catch (error) {
-            console.error(error);
-            return message.reply('❌ تعذر التشغيل، تأكد من صحة الرابط أو الاسم.');
-        }
+    // التحقق مما إذا كان الأمر مستخدماً في قناة الألعاب المخصصة
+    if (interaction.channelId !== GAME_CHANNEL_ID) {
+        return interaction.reply({
+            content: `⚠️ يرجى استخدام الأوامر داخل قناة الألعاب المخصصة <#${GAME_CHANNEL_ID}>`,
+            ephemeral: true // تظهر الرسالة فقط للمستخدم نفسه
+        });
     }
 
-    // 2. أمر التخطي (سكيب)
-    else if (text === 'سكيب') {
-        const queue = distube.getQueue(message.guild.id);
-        if (!queue) return message.reply('❌ ما فيه شيء شغال أساساً!');
-        try {
-            await queue.skip();
-            return message.channel.send('🛑 تم تخطي المقطع.');
-        } catch {
-            return message.reply('❌ ما فيه أغنية تالية لتخطيها!');
-        }
-    }
+    const { commandName } = interaction;
 
-    // 3. أمر التوقف المؤقت (توقف)
-    else if (text === 'توقف') {
-        const queue = distube.getQueue(message.guild.id);
-        if (!queue) return message.reply('❌ البوت مو شغال!');
-        try {
-            queue.pause();
-            return message.channel.send('⏸️ تم ايقاف الأغنية مؤقتاً.');
-        } catch {
-            return message.reply('❌ حدث خطأ.');
-        }
-    }
-
-    // 4. أمر الإكمال (إكمال)
-    else if (text === 'إكمال') {
-        const queue = distube.getQueue(message.guild.id);
-        if (!queue) return message.reply('❌ البوت مو شغال!');
-        try {
-            queue.resume();
-            return message.channel.send('▶️ تم استكمال تشغيل الأغنية.');
-        } catch {
-            return message.reply('❌ حدث خطأ.');
-        }
-    }
-
-    // 5. أمر التكرار (تكرار)
-    else if (text === 'تكرار') {
-        const queue = distube.getQueue(message.guild.id);
-        if (!queue) return message.reply('❌ البوت مو شغال!');
-        try {
-            const mode = queue.toggleRepeatMode();
-            return message.channel.send(`🔁 وضع التكرار صار: ${mode ? (mode === 2 ? 'القائمة بالكامل' : 'الأغنية الحالية') : 'مطفأ'}`);
-        } catch {
-            return message.reply('❌ ما قدرت أغير وضع التكرار.');
+    if (commandName === 'مساعدة') {
+        const helpEmbed = new EmbedBuilder()
+            .setTitle('📖 قائمة المساعدة - الإعدادات العامة')
+            .setColor(0x0099FF)
+            .setDescription('إليك قائمة الأوامر المتاحة للبوت:')
+            .addFields(
+                { name: '/لعب [نوع_اللعبة]', value: 'بدء لعبة جديدة', inline: false },
+                { name: '/ألعاب', value: 'عرض الألعاب المتوفرة', inline: false },
+                { name: '/مساعدة', value: 'إظهار قائمة المساعدة', inline: false }
+            );
+        await interaction.reply({ embeds: [helpEmbed] });
+    } 
+    else if (commandName === 'ألعاب') {
+        await interaction.reply('🎮 **الألعاب المتوفرة حالياً:**\n1. أسرع (سرعة البديهة)\n2. فك (فك الكلمات)\n3. أدمج (تجميع الحروف)\n4. روليت (لعبة العجلة والتحدي)');
+    } 
+    else if (commandName === 'لعب') {
+        const gameType = interaction.options.getString('نوع_اللعبة');
+        
+        if (gameType === 'روليت') {
+            await interaction.reply('🎡 **بدء لعبة الروليت!** جاري تجهيز العجلة واختيار اللاعبين...');
+        } else {
+            await interaction.reply(`⏳ تم بدء لعبة **${gameType}**! استعدوا للإجابة في الشات.`);
         }
     }
 });
 
-distube.on('playSong', (queue, song) => {
-    queue.textChannel.send(`▶️ شغال الآن: **${song.name}**`);
-});
-
+// تسجيل الدخول بالبوت
 client.login(TOKEN);
