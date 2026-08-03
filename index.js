@@ -17,13 +17,40 @@ const client = new Client({
 const userPoints = new Map();
 let activeGame = null;
 
-const flagsList = [
+// قائمة شاملة لجميع أعلام دول العالم
+const allFlagsList = [
     { name: 'السعودية', flag: '🇸🇦' }, { name: 'الإمارات', flag: '🇦🇪' }, { name: 'الكويت', flag: '🇰🇼' },
     { name: 'قطر', flag: '🇶🇦' }, { name: 'البحرين', flag: '🇧🇭' }, { name: 'عمان', flag: '🇴🇲' },
     { name: 'مصر', flag: '🇪🇬' }, { name: 'المغرب', flag: '🇲🇦' }, { name: 'الجزائر', flag: '🇩🇿' },
-    { name: 'العراق', flag: '🇮🇶' }, { name: 'الاردن', flag: '🇯🇴' }, { name: 'امريكا', flag: '🇺🇸' },
-    { name: 'بريطانيا', flag: '🇬🇧' }, { name: 'فرنسا', flag: '🇫🇷' }, { name: 'تركيا', flag: '🇹🇷' }
+    { name: 'العراق', flag: '🇮🇶' }, { name: 'الاردن', flag: '🇯🇴' }, { name: 'سوريا', flag: '🇸🇾' },
+    { name: 'لبنان', flag: '🇱🇧' }, { name: 'فلسطين', flag: '🇵🇸' }, { name: 'اليمن', flag: '🇾🇪' },
+    { name: 'السودان', flag: '🇸🇩' }, { name: 'ليبيا', flag: '🇱🇾' }, { name: 'تونس', flag: '🇹🇳' },
+    { name: 'موريتانيا', flag: '🇲🇷' }, { name: 'الصومال', flag: '🇸🇴' }, { name: 'جيبوتي', flag: '🇩🇯' },
+    { name: 'جزر القمر', flag: '🇰🇲' }, { name: 'امريكا', flag: '🇺🇸' }, { name: 'بريطانيا', flag: '🇬🇧' },
+    { name: 'فرنسا', flag: '🇫🇷' }, { name: 'المانيا', flag: '🇩🇪' }, { name: 'ايطاليا', flag: '🇮🇹' },
+    { name: 'اسبانيا', flag: '🇪🇸' }, { name: 'تركيا', flag: '🇹🇷' }, { name: 'البرتغال', flag: '🇵🇹' },
+    { name: 'روسيا', flag: '🇷🇺' }, { name: 'البرازيل', flag: '🇧🇷' }, { name: 'الارجنتين', flag: '🇦🇷' },
+    { name: 'اليابان', flag: '🇯🇵' }, { name: 'كوريا الجنوبية', flag: '🇰🇷' }, { name: 'الصين', flag: '🇨🇳' },
+    { name: 'الهند', flag: '🇮🇳' }, { name: 'كندا', flag: '🇨🇦' }, { name: 'استراليا', flag: '🇦🇺' },
+    { name: 'المكسيك', flag: '🇲🇽' }, { name: 'جنوب افريقيا', flag: '🇿🇦' }, { name: 'ايسلندا', flag: '🇮🇸' },
+    { name: 'السويد', flag: '🇸🇪' }, { name: 'النرويج', flag: '🇳🇴' }, { name: 'الدنمارك', flag: '🇩🇰' },
+    { name: 'فنلندا', flag: '🇫🇮' }, { name: 'سويسرا', flag: '🇨🇭' }, { name: 'النمسا', flag: '🇦🇹' },
+    { name: 'بلجيكا', flag: '🇧🇪' }, { name: 'هولندا', flag: '🇳🇱' }, { name: 'اليونان', flag: '🇬🇷' },
+    { name: 'بولندا', flag: '🇵🇱' }, { name: 'اوكرانيا', flag: '🇺🇦' }, { name: 'باكستان', flag: '🇵🇰' },
+    { name: 'إيران', flag: '🇮🇷' }, { name: 'إندونيسيا', flag: '🇮🇩' }, { name: 'ماليزيا', flag: '🇲🇾' }
 ];
+
+let availableFlags = [...allFlagsList]; // قائمة مخصصة للسحب بدون تكرار
+
+function getRandomFlag() {
+    if (availableFlags.length === 0) {
+        availableFlags = [...allFlagsList]; // إذا خلصت كلها، تعبأ القائمة من جديد
+    }
+    const randomIndex = Math.floor(Math.random() * availableFlags.length);
+    const selectedFlag = availableFlags[randomIndex];
+    availableFlags.splice(randomIndex, 1); // حذف العلم عشان ما يتكرر إلا لما تخلص القائمة
+    return selectedFlag;
+}
 
 const speedWords = ['برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 'فوز', 'لعبة'];
 
@@ -104,9 +131,9 @@ client.on('messageCreate', async message => {
 
         if (activeGame.type === 'أعلام') {
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
-            const randomFlag = flagsList[Math.floor(Math.random() * flagsList.length)];
+            const randomFlag = getRandomFlag();
             activeGame.answer = randomFlag.name;
-            return message.channel.send(`ما هو اسم الدولة لهذا العلم:\n\`\`\`fix\n ${randomFlag.flag} \n\`\`\``);
+            return message.channel.send(`ما هو اسم الدولة لهذا العلم:\n\`\`\`ansi\n\n       ${randomFlag.flag}       \n\n\`\`\``);
         }
 
         activeGame = null;
@@ -193,9 +220,9 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply(`لعبة أدمج الحروف بدأت! الحروف:\n\`\`\`fix\nت ح د ي\n\`\`\` - النقاط: ${customPoints}`);
         }
         else if (gameType === 'أعلام') {
-            const randomFlag = flagsList[Math.floor(Math.random() * flagsList.length)];
+            const randomFlag = getRandomFlag();
             activeGame = { type: 'أعلام', answer: randomFlag.name, points: customPoints };
-            await interaction.reply(`لعبة الأعلام بدأت! ما هو اسم الدولة لهذا العلم:\n\`\`\`fix\n ${randomFlag.flag} \n\`\`\``);
+            await interaction.reply(`لعبة الأعلام بدأت! ما هو اسم الدولة لهذا العلم:\n\`\`\`ansi\n\n       ${randomFlag.flag}       \n\n\`\`\``);
         }
     }
     else if (commandName === 'stop') {
