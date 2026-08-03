@@ -17,9 +17,11 @@ const client = new Client({
 const userPoints = new Map();
 let activeGame = null;
 
+// حفظ ID الرول المخول بالتحكم (افتراضياً فارغ، ويتم تحديده عبر أمر /setrole)
+let allowedRoleId = null;
+
 // ==================== بنوك البيانات الموسعة والعشوائية ====================
 
-// 1. الأعلام
 const allFlagsList = [
     { name: 'السعودية', code: 'sa' }, { name: 'الإمارات', code: 'ae' }, { name: 'الكويت', code: 'kw' },
     { name: 'قطر', code: 'qa' }, { name: 'البحرين', code: 'bh' }, { name: 'عمان', code: 'om' },
@@ -43,7 +45,6 @@ const allFlagsList = [
     { name: 'منغوليا', code: 'mn' }
 ];
 
-// 2. بنك الكلمات الموسع (للـ سرعة، فك، أدمج)
 const expandedWords = [
     'برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 
     'فوز', 'لعبة', 'حاسب', 'شبكة', 'تطبيق', 'مطور', 'قناة', 'رومات', 'تفاعل', 'شات', 
@@ -71,6 +72,14 @@ function makeSpaced(word) {
     return word.split('').join(' ');
 }
 
+// دالة فحص الصلاحيات (الأدمن الأساسي + الرول المخصص المحدد بـ /setrole)
+function isStaff(member) {
+    if (!member) return false;
+    const hasAdmin = member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageMessages);
+    const hasCustomRole = allowedRoleId && member.roles.cache.has(allowedRoleId);
+    return hasAdmin || hasCustomRole;
+}
+
 // =========================================================================
 
 const commands = [
@@ -96,19 +105,27 @@ const commands = [
                 .setDescription('عدد النقاط')
                 .setRequired(true)
         ),
-    new SlashCommandBuilder().setName('stop').setDescription('إيقاف اللعبة الحالية'),
+    new SlashCommandBuilder().setName('stop').setDescription('إيقاف اللعبة الحالية (للمشرفين أو رول التحكم)'),
     new SlashCommandBuilder()
         .setName('points')
         .setDescription('عرض النقاط')
         .addUserOption(option => option.setName('user').setDescription('العضو').setRequired(false)),
     new SlashCommandBuilder()
         .setName('resetpoints')
-        .setDescription('تصفير نقاط عضو')
-        .addUserOption(option => option.setName('user').setDescription('العضو').setRequired(true))
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+        .setDescription('تصفير نقاط عضو (للمشرفين أو رول التحكم)')
+        .addUserOption(option => option.setName('user').setDescription('العضو').setRequired(true)),
     new SlashCommandBuilder()
         .setName('resetallpoints')
-        .setDescription('تصفير نقاط الجميع')
+        .setDescription('تصفير نقاط الجميع (للمشرفين أو رول التحكم)')
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    new SlashCommandBuilder()
+        .setName('setrole')
+        .setDescription('تحديد الرول المسموح له بالتحكم في الألعاب والبوت (خاص بالأدمن)')
+        .addRoleOption(option => 
+            option.setName('role')
+                .setDescription('اختر الرول')
+                .setRequired(true)
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 ].map(command => command.toJSON());
 
@@ -126,7 +143,7 @@ client.once('ready', async () => {
     }
 });
 
-// دالة مؤقت الألعاب النصية (سرعة، فك، أدمج) - 30 ثانية
+// مؤقت الألعاب النصية (30 ثانية)
 function setGameTimeout(channel) {
     if (activeGame && activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
     
@@ -170,7 +187,7 @@ function setGameTimeout(channel) {
     }, 30000);
 }
 
-// دالة إرسال علم جديد (30 ثانية)
+// مؤقت الأعلام (30 ثانية)
 async function sendNextFlag(channel) {
     if (!activeGame || activeGame.type !== 'أعلام') return;
     if (activeGame.timer) clearTimeout(activeGame.timer);
@@ -204,7 +221,11 @@ async function sendNextFlag(channel) {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    if (message.content === 'وقف' || message.content === '/stop') {
+    // كلمة "وقف" في الشات (محمية لفريق التحكم أو المشرفين)
+    if (message.content === 'وقف') {
+        if (!isStaff(message.member)) {
+            return message.reply({ content: '❌ هذا الأمر مخصص للمشرفين أو رول التحكم المخصص فقط!', ephemeral: true });
+        }
         if (activeGame) {
             if (activeGame.timer) clearTimeout(activeGame.timer);
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
@@ -213,12 +234,43 @@ client.on('messageCreate', async message => {
         return message.reply('تم إيقاف اللعبة.');
     }
 
+    // أمر "توب" في الشات (يظهر القائمة مع أيقونة السيرفر واسم MVP فوق يسار)
+    if (message.content === 'توب') {
+        if (userPoints.size === 0) {
+            return message.reply('لا توجد أي نقاط مسجلة حتى الآن!');
+        }
+
+        const sortedUsers = Array.from(userPoints.entries())
+            .sort((a, b) => b[1] - a[1]);
+
+        let description = '';
+        sortedUsers.forEach(([userId, points], index) => {
+            let medal = `#${index + 1}`;
+            if (index === 0) medal = '🥇';
+            else if (index === 1) medal = '🥈';
+            else if (index === 2) medal = '🥉';
+
+            description += `${medal} | <@${userId}> ── **${points}** نقطة\n`;
+        });
+
+        const guildName = message.guild ? message.guild.name : 'MVP';
+        const guildIcon = message.guild ? message.guild.iconURL({ dynamic: true }) : null;
+
+        const topEmbed = new EmbedBuilder()
+            .setColor(0xFEE75C)
+            .setAuthor({ name: guildName, iconURL: guildIcon })
+            .setTitle('🏆 قائمة صدارة الترتيب')
+            .setDescription(description)
+            .setTimestamp();
+
+        return message.reply({ embeds: [topEmbed] });
+    }
+
     if (activeGame) {
         let userAns = message.content.trim().replace(/\s+/g, '').replace(/أ|إ|آ/g, 'ا');
         let correctAns = activeGame.answer.trim().replace(/\s+/g, '').replace(/أ|إ|آ/g, 'ا');
 
         if (userAns === correctAns) {
-            // تصفير عداد الخمول لأن أحد تفاعل وجاوب صح
             activeGame.missedCount = 0;
 
             const userId = message.author.id;
@@ -283,14 +335,28 @@ client.on('interactionCreate', async interaction => {
                 { name: '/play', value: 'بدء لعبة وتحديد النقاط' },
                 { name: '/stop', value: 'إيقاف اللعبة' },
                 { name: '/games', value: 'عرض الألعاب' },
-                { name: '/points', value: 'عرض النقاط' }
+                { name: '/points', value: 'عرض النقاط' },
+                { name: '/setrole', value: 'تحديد رول التحكم بالبوت (للأدمن)' }
             );
         await interaction.reply({ embeds: [helpEmbed] });
     } 
     else if (commandName === 'games') {
         await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\` | \`روليت\``);
     } 
+    else if (commandName === 'setrole') {
+        if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+            return interaction.reply({ content: '❌ هذا الأمر مخصص لمسؤولي السيرفر (Administrator) فقط!', ephemeral: true });
+        }
+        const role = interaction.options.getRole('role');
+        allowedRoleId = role.id;
+        await interaction.reply(`✅ تم تعيين رول <@&${role.id}> بنجاح! يمكن لأصحاب هذا الرول الآن بدء وإيقاف الألعاب وإدارة النقاط.`);
+    }
     else if (commandName === 'play') {
+        // حماية أمر بدء اللعبة (يتطلب صلاحية إدارية أو الرول المخصص)
+        if (!isStaff(interaction.member)) {
+            return interaction.reply({ content: '❌ ليس لديك الصلاحية لبدء الألعاب! يتطلب رول التحكم المخصص أو الإشراف.', ephemeral: true });
+        }
+
         const gameType = interaction.options.getString('game');
         const customPoints = interaction.options.getInteger('points');
 
@@ -378,6 +444,9 @@ client.on('interactionCreate', async interaction => {
         }
     }
     else if (commandName === 'stop') {
+        if (!isStaff(interaction.member)) {
+            return interaction.reply({ content: '❌ هذا الأمر مخصص لفريق التحكم أو المشرفين فقط!', ephemeral: true });
+        }
         if (activeGame) {
             if (activeGame.timer) clearTimeout(activeGame.timer);
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
@@ -391,11 +460,17 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply(`نقاط <@${targetUser.id}>: ${points}`);
     }
     else if (commandName === 'resetpoints') {
+        if (!isStaff(interaction.member)) {
+            return interaction.reply({ content: '❌ هذا الأمر مخصص لفريق التحكم أو المشرفين فقط!', ephemeral: true });
+        }
         const targetUser = interaction.options.getUser('user');
         userPoints.set(targetUser.id, 0);
         await interaction.reply(`تم تصفير نقاط <@${targetUser.id}>.`);
     }
     else if (commandName === 'resetallpoints') {
+        if (!isStaff(interaction.member)) {
+            return interaction.reply({ content: '❌ هذا الأمر مخصص لفريق التحكم أو المشرفين فقط!', ephemeral: true });
+        }
         userPoints.clear();
         await interaction.reply('تم تصفير نقاط الجميع.');
     }
