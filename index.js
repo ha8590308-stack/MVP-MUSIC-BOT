@@ -1,5 +1,6 @@
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('canvas');
+const GIFEncoder = require('gifencoder');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -118,28 +119,21 @@ function isStaff(member) {
     return hasAdmin || hasCustomRole;
 }
 
-// تصميم الروليت باللون الأزرق والأبيض النقي وبدون أي خلفيات سوداء
-async function drawSpinningWheel(players, clientInstance, guildId, centerUserId, currentRotation) {
-    const width = 500;
-    const height = 500;
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
-
+// دالة رسم الإطار الواحد لعجلة الروليت
+function drawWheelFrame(ctx, width, height, players, clientInstance, guildId, rotation, centerUserId, isFinal) {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = 210;
     const sliceAngle = (2 * Math.PI) / players.length;
 
-    // مسح الخلفية وتلوينها بلون أزرق نقي ومريح للعين تماماً
     ctx.fillStyle = '#1e3a8a';
     ctx.fillRect(0, 0, width, height);
 
-    // تدرجات الألوان الزرقاء للأقسام
     const sliceColors = ['#2563eb', '#3b82f6', '#1d4ed8', '#1e40af'];
 
     ctx.save();
     ctx.translate(centerX, centerY);
-    ctx.rotate(currentRotation);
+    ctx.rotate(rotation);
     ctx.translate(-centerX, -centerY);
 
     for (let i = 0; i < players.length; i++) {
@@ -154,7 +148,6 @@ async function drawSpinningWheel(players, clientInstance, guildId, centerUserId,
         ctx.fillStyle = sliceColors[i % sliceColors.length];
         ctx.fill();
         
-        // فواصل بيضاء واضحة جداً بين الأقسام
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 3.5;
         ctx.stroke();
@@ -170,28 +163,17 @@ async function drawSpinningWheel(players, clientInstance, guildId, centerUserId,
         ctx.font = 'bold 16px Arial';
         
         let displayName = players[i];
-        try {
-            const guild = clientInstance.guilds.cache.get(guildId);
-            if (guild) {
-                const member = await guild.members.fetch(players[i]).catch(() => null);
-                if (member) displayName = member.displayName;
-            }
-        } catch (e) {}
-
-        if (displayName.length > 11) displayName = displayName.substring(0, 9) + '..';
         ctx.fillText(displayName, radius - 30, 0);
         ctx.restore();
     }
     ctx.restore();
 
-    // الإطار الخارجي للدائرة أبيض ناصع
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 5;
     ctx.stroke();
 
-    // الدائرة الوسطية (تظهر صورة الشخص فقط إذا توقفت العجلة عليه)
     const centerRadius = 55;
     ctx.save();
     ctx.beginPath();
@@ -199,36 +181,16 @@ async function drawSpinningWheel(players, clientInstance, guildId, centerUserId,
     ctx.closePath();
     ctx.clip();
 
-    let drawnAvatar = false;
-    if (centerUserId) {
-        try {
-            const guild = clientInstance.guilds.cache.get(guildId);
-            if (guild) {
-                const member = await guild.members.fetch(centerUserId).catch(() => null);
-                if (member) {
-                    const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 128 });
-                    const avatarImage = await loadImage(avatarURL);
-                    ctx.drawImage(avatarImage, centerX - centerRadius, centerY - centerRadius, centerRadius * 2, centerRadius * 2);
-                    drawnAvatar = true;
-                }
-            }
-        } catch (e) {}
-    }
-
-    if (!drawnAvatar) {
-        ctx.fillStyle = '#1e3a8a';
-        ctx.fillRect(centerX - centerRadius, centerY - centerRadius, centerRadius * 2, centerRadius * 2);
-    }
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(centerX - centerRadius, centerY - centerRadius, centerRadius * 2, centerRadius * 2);
     ctx.restore();
 
-    // إطار الدائرة الوسطية أبيض
     ctx.beginPath();
     ctx.arc(centerX, centerY, centerRadius, 0, 2 * Math.PI);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // السهم المؤشر على اليمين
     ctx.beginPath();
     ctx.moveTo(width - 4, centerY - 15);
     ctx.lineTo(width - 28, centerY);
@@ -239,8 +201,37 @@ async function drawSpinningWheel(players, clientInstance, guildId, centerUserId,
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 1.5;
     ctx.stroke();
+}
 
-    return new AttachmentBuilder(canvas.toBuffer(), { name: 'wheel.png' });
+// دالة توليد وعرض حركة الدوران كـ GIF متحرك
+async function generateSpinningGif(players, clientInstance, guildId, luckyPlayerId) {
+    const width = 500;
+    const height = 500;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+
+    const encoder = new GIFEncoder(width, height);
+    encoder.start();
+    encoder.setRepeat(0); 
+    encoder.setDelay(70); 
+    encoder.setQuality(10);
+
+    const totalFrames = 18; 
+    const sliceAngle = (2 * Math.PI) / players.length;
+    const luckyIndex = players.indexOf(luckyPlayerId);
+    const finalAngle = 5 * (2 * Math.PI) + (2 * Math.PI - (luckyIndex * sliceAngle + sliceAngle / 2));
+
+    for (let f = 0; f < totalFrames; f++) {
+        let progress = f / totalFrames;
+        let currentRotation = finalAngle * Math.pow(progress, 2); 
+        
+        drawWheelFrame(ctx, width, height, players, clientInstance, guildId, currentRotation, luckyPlayerId, f === totalFrames - 1);
+        encoder.addFrame(ctx);
+    }
+
+    encoder.finish();
+    const buffer = encoder.out.getData();
+    return new AttachmentBuilder(buffer, { name: 'roulette.gif' });
 }
 
 const commands = [
@@ -493,54 +484,40 @@ client.on('interactionCreate', async interaction => {
 
                     const luckyPlayerIndex = Math.floor(Math.random() * players.length);
                     const luckyPlayerId = players[luckyPlayerIndex];
-                    
-                    const sliceAngle = (2 * Math.PI) / players.length;
-                    const finalTargetAngle = 6 * (2 * Math.PI) + (2 * Math.PI - (luckyPlayerIndex * sliceAngle + sliceAngle / 2));
 
-                    let currentMsg = null;
-                    let steps = 3;
-
-                    for (let step = 1; step <= steps; step++) {
-                        let partialAngle = (finalTargetAngle / steps) * step;
-                        let tempAttachment = await drawSpinningWheel(players, client, interaction.guildId, null, partialAngle);
-                        
-                        let tempEmbed = new EmbedBuilder()
-                            .setColor(0x2563eb)
-                            .setImage('attachment://wheel.png');
-
-                        if (!currentMsg) {
-                            currentMsg = await interaction.followUp({ embeds: [tempEmbed], files: [tempAttachment], components: [] });
-                        } else {
-                            try {
-                                currentMsg = await currentMsg.edit({ embeds: [tempEmbed], files: [tempAttachment], components: [] });
-                            } catch (e) {}
+                    let displayNames = [];
+                    const guild = client.guilds.cache.get(interaction.guildId);
+                    for (const id of players) {
+                        let name = id;
+                        if (guild) {
+                            const member = await guild.members.fetch(id).catch(() => null);
+                            if (member) name = member.displayName;
                         }
-                        await new Promise(r => setTimeout(r, 600));
+                        if (name.length > 10) name = name.substring(0, 8) + '..';
+                        displayNames.push(name);
                     }
 
-                    let finalAttachment = await drawSpinningWheel(players, client, interaction.guildId, luckyPlayerId, finalTargetAngle);
-                    let finalEmbed = new EmbedBuilder()
+                    const gifAttachment = await generateSpinningGif(displayNames, client, interaction.guildId, displayNames[luckyPlayerIndex]);
+                    const gifEmbed = new EmbedBuilder()
                         .setColor(0x2563eb)
-                        .setImage('attachment://wheel.png');
-
-                    try {
-                        currentMsg = await currentMsg.edit({ 
-                            content: `استقرت العجلة على: <@${luckyPlayerId}>`, 
-                            embeds: [finalEmbed], 
-                            files: [finalAttachment], 
-                            components: [] 
-                        });
-                    } catch (e) {}
+                        .setTitle('🎡 عجلة الروليت تدور...')
+                        .setImage('attachment://roulette.gif');
 
                     const targetOptions = players.filter(id => id !== luckyPlayerId).map(id => ({ label: `طرد اللاعب`, value: id }));
+                    let componentsRow = [];
                     if (targetOptions.length > 0) {
                         const selectMenu = new StringSelectMenuBuilder().setCustomId(`kick_${luckyPlayerId}`).setPlaceholder('اختر لاعباً لطرده').addOptions(targetOptions);
-                        try {
-                            await currentMsg.edit({
-                                components: [new ActionRowBuilder().addComponents(selectMenu)]
-                            });
-                        } catch (e) {}
-                        
+                        componentsRow = [new ActionRowBuilder().addComponents(selectMenu)];
+                    }
+
+                    let currentMsg = await interaction.followUp({ 
+                        content: `🎡 استقرت العجلة على: <@${luckyPlayerId}>`, 
+                        embeds: [gifEmbed], 
+                        files: [gifAttachment], 
+                        components: componentsRow 
+                    });
+
+                    if (targetOptions.length > 0) {
                         const choiceCollector = currentMsg.createMessageComponentCollector({ filter: i => i.user.id === luckyPlayerId, time: 15000, max: 1 });
                         choiceCollector.on('collect', async i => {
                             const kickedId = i.values[0];
@@ -583,8 +560,6 @@ client.on('interactionCreate', async interaction => {
             if (activeGame.timer) clearTimeout(activeGame.timer);
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
         }
-        activeGame = null;
-        await interaction.reply('تم إيقاف اللعبة.');
     }
     else if (commandName === 'points') {
         const target = interaction.options.getUser('user') || interaction.user;
