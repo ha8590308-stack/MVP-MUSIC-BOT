@@ -90,7 +90,7 @@ function isStaff(member) {
 // ==================== الأوامر ====================
 
 const commands = [
-    new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة الشاملة'),
+    new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة'),
     new SlashCommandBuilder().setName('games').setDescription('عرض الألعاب المتوفرة'),
     new SlashCommandBuilder()
         .setName('play')
@@ -139,12 +139,12 @@ const CLIENT_ID = '1533411298577088604';
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 client.once('ready', async () => {
-    console.log(`✅ تم تسجيل الدخول باسم: ${client.user.tag}`);
+    console.log(`تم تسجيل الدخول باسم: ${client.user.tag}`);
     try {
         await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-        console.log('✨ تم تحديث الأوامر بنجاح.');
+        console.log('تم تحديث الأوامر بنجاح.');
     } catch (error) {
-        console.error('❌ خطأ في تحديث الأوامر:', error);
+        console.error('خطأ في تحديث الأوامر:', error);
     }
 });
 
@@ -160,10 +160,10 @@ function setGameTimeout(channel) {
         activeGame.missedCount = (activeGame.missedCount || 0) + 1;
 
         if (activeGame.missedCount >= 2) {
-            await channel.send(`⏰ انتهى الوقت! لم يتفاعل أحد مرتين متتاليتين، تم إيقاف اللعبة.`);
+            await channel.send(`انتهى الوقت! لم يتفاعل أحد مرتين متتاليتين، تم إيقاف اللعبة.`);
             activeGame = null;
         } else {
-            await channel.send(`⏰ انتهى الوقت! لم يقدم أحد الإجابة، جاري إرسال كلمة أخرى...`);
+            await channel.send(`انتهى الوقت! لم يقدم أحد الإجابة، جاري إرسال كلمة أخرى...`);
             const nextWord = getUniqueWord();
             activeGame.isProcessing = false;
             
@@ -206,7 +206,7 @@ async function sendNextFlag(channel) {
 
     const flagEmbed = new EmbedBuilder()
         .setColor(0xED4245)
-        .setTitle('🎮 لعبة الأعلام')
+        .setTitle('لعبة الأعلام')
         .setDescription('**أسرع شخص يخمن اسم العلم الموجود بالأسفل!**')
         .setImage(`https://flagcdn.com/w640/${randomFlag.code}.png`);
 
@@ -219,10 +219,10 @@ async function sendNextFlag(channel) {
         activeGame.missedCount = (activeGame.missedCount || 0) + 1;
 
         if (activeGame.missedCount >= 2) {
-            await channel.send(`⏰ انتهى الوقت! لم يقدم أحد الإجابة الصحيحة مرتين متتاليتين. الإجابة كانت: **${randomFlag.name}**\nتم إيقاف اللعبة.`);
+            await channel.send(`انتهى الوقت! لم يقدم أحد الإجابة الصحيحة مرتين متتاليتين. الإجابة كانت: **${randomFlag.name}**\nتم إيقاف اللعبة.`);
             activeGame = null;
         } else {
-            await channel.send(`⏰ انتهى الوقت! لم يقدم أحد الإجابة الصحيحة. الإجابة كانت: **${randomFlag.name}**\nجاري إرسال علم جديد...`);
+            await channel.send(`انتهى الوقت! لم يقدم أحد الإجابة الصحيحة. الإجابة كانت: **${randomFlag.name}**\nجاري إرسال علم جديد...`);
             sendNextFlag(channel);
         }
     }, 30000);
@@ -232,7 +232,7 @@ client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     if (message.content === 'وقف') {
-        if (!isStaff(message.member)) return message.reply({ content: '❌ للمشرفين فقط!', ephemeral: true });
+        if (!isStaff(message.member)) return message.reply({ content: 'للمشرفين فقط!', ephemeral: true });
         if (activeGame) {
             if (activeGame.timer) clearTimeout(activeGame.timer);
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
@@ -248,15 +248,12 @@ client.on('messageCreate', async message => {
         let description = '';
         sortedUsers.forEach(([userId, points], index) => {
             let medal = `#${index + 1}`;
-            if (index === 0) medal = '🥇';
-            else if (index === 1) medal = '🥈';
-            else if (index === 2) medal = '🥉';
             description += `${medal} | <@${userId}> ── **${points}** نقطة\n`;
         });
 
         const topEmbed = new EmbedBuilder()
             .setColor(0xFEE75C)
-            .setTitle('🏆 قائمة صدارة الترتيب')
+            .setTitle('قائمة صدارة الترتيب')
             .setDescription(description)
             .setTimestamp();
 
@@ -334,24 +331,30 @@ client.on('interactionCreate', async interaction => {
 
     if (commandName === 'help') {
         const helpEmbed = new EmbedBuilder()
-            .setTitle('🤖 قائمة أوامر بوت الألعاب الشاملة')
+            .setTitle('قائمة الأوامر')
             .setColor(0x0099FF)
-            .setDescription('هذه قائمة بكل الأوامر والمميزات المتاحة في البوت:')
-            .addFields(
-                { 
-                    name: '🎮 الألعاب واللعب', 
-                    value: '`/play [الععبة] [النقاط]` - بدء لعبة جديدة (سرعة، فك، أدمج، أعلام، روليت)\n`/stop` أو كلمة `وقف` - إيقاف اللعبة الحالية\n`/games` - عرض قائمة الألعاب المتوفرة' 
-                },
-                { 
-                    name: '🏆 النقاط والصدارة', 
-                    value: '`/points` - عرض نقاطك (أو نقاط شخص آخر عبر تحديد العضو)\nكلمة `توب` - عرض قائمة الترتيب وصدارة النقاط في السيرفر' 
-                },
-                { 
-                    name: '⚙️ أوامر الإدارة والمشرفين', 
-                    value: '`/setrole [الرول]` - تحديد رول التحكم الخاص بالمشرفين\n`/addpoints [العضو] [النقاط]` - إضافة نقاط لعضو\n`/resetpoints [العضو]` - تصفير نقاط عضو محدد\n`/resetallpoints` - تصفير نقاط جميع الأعضاء' 
-                }
-            )
-            .setFooter({ text: 'MVP Games Bot' });
+            .setDescription(
+                '/play\n' +
+                'بدء لعبة جديدة\n\n' +
+                '/stop\n' +
+                'إيقاف اللعبة الحالية\n\n' +
+                '/games\n' +
+                'عرض الألعاب المتوفرة\n\n' +
+                '/points\n' +
+                'عرض النقاط\n\n' +
+                'توب\n' +
+                'عرض صدارة الترتيب\n\n' +
+                'وقف\n' +
+                'إيقاف اللعبة بالأمر النصي\n\n' +
+                '/setrole\n' +
+                'تحديد رول التحكم للمشرفين\n\n' +
+                '/addpoints\n' +
+                'إضافة نقاط لعضو\n\n' +
+                '/resetpoints\n' +
+                'تصفير نقاط عضو\n\n' +
+                '/resetallpoints\n' +
+                'تصفير نقاط الجميع'
+            );
         await interaction.reply({ embeds: [helpEmbed] });
     } 
     else if (commandName === 'games') {
@@ -360,10 +363,10 @@ client.on('interactionCreate', async interaction => {
     else if (commandName === 'setrole') {
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'للأدمن فقط', ephemeral: true });
         allowedRoleId = interaction.options.getRole('role').id;
-        await interaction.reply(`✅ تم تعيين رول التحكم بنجاح.`);
+        await interaction.reply(`تم تعيين رول التحكم بنجاح.`);
     }
     else if (commandName === 'play') {
-        if (!isStaff(interaction.member)) return interaction.reply({ content: '❌ ليس لديك صلاحية.', ephemeral: true });
+        if (!isStaff(interaction.member)) return interaction.reply({ content: 'ليس لديك صلاحية.', ephemeral: true });
 
         const gameType = interaction.options.getString('game');
         const customPoints = interaction.options.getInteger('points');
@@ -375,11 +378,11 @@ client.on('interactionCreate', async interaction => {
 
         if (gameType === 'روليت') {
             const participants = new Set();
-            const joinButton = new ButtonBuilder().setCustomId('join_roulette').setLabel('انضمام للعبة 🎮').setStyle(ButtonStyle.Success);
+            const joinButton = new ButtonBuilder().setCustomId('join_roulette').setLabel('انضمام للعبة').setStyle(ButtonStyle.Success);
             const row = new ActionRowBuilder().addComponents(joinButton);
             
             const msg = await interaction.reply({ 
-                embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle('🎰 روليت').setDescription('اضغط للانضمام خلال 15 ثانية!')], 
+                embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle('روليت').setDescription('اضغط للانضمام خلال 15 ثانية!')], 
                 components: [row], 
                 fetchReply: true 
             });
@@ -388,45 +391,45 @@ client.on('interactionCreate', async interaction => {
             collector.on('collect', async i => {
                 if (!participants.has(i.user.id)) {
                     participants.add(i.user.id);
-                    await i.reply({ content: '✅ انضممت بنجاح!', ephemeral: true });
+                    await i.reply({ content: 'انضممت بنجاح!', ephemeral: true });
                 } else {
-                    await i.reply({ content: '⚠️ منضم مسبقاً!', ephemeral: true });
+                    await i.reply({ content: 'منضم مسبقاً!', ephemeral: true });
                 }
             });
 
             collector.on('end', async () => {
                 let players = Array.from(participants);
-                if (players.length === 0) return interaction.editReply({ content: '⏰ انتهى الوقت بدون مشاركين.', embeds: [], components: [] });
+                if (players.length === 0) return interaction.editReply({ content: 'انتهى الوقت بدون مشاركين.', embeds: [], components: [] });
                 if (players.length === 1) {
                     userPoints.set(players[0], (userPoints.get(players[0]) || 0) + customPoints);
-                    return interaction.editReply({ content: `👑 فاز <@${players[0]}> تلقائياً بـ ${customPoints} نقطة!`, embeds: [], components: [] });
+                    return interaction.editReply({ content: `فاز <@${players[0]}> تلقائياً بـ ${customPoints} نقطة!`, embeds: [], components: [] });
                 }
 
-                await interaction.editReply({ content: `🎡 بدأ الروليت!`, embeds: [], components: [] });
+                await interaction.editReply({ content: `بدأ الروليت!`, embeds: [], components: [] });
 
                 const runRouletteRound = async () => {
                     if (players.length <= 1) {
                         userPoints.set(players[0], (userPoints.get(players[0]) || 0) + customPoints);
-                        return interaction.followUp({ content: `🏆 الفائز بالروليت هو <@${players[0]}>!` });
+                        return interaction.followUp({ content: `الفائز بالروليت هو <@${players[0]}>!` });
                     }
 
                     const luckyPlayerId = players[Math.floor(Math.random() * players.length)];
                     const targetOptions = players.filter(id => id !== luckyPlayerId).map(id => ({ label: `طرد اللاعب`, value: id }));
                     const selectMenu = new StringSelectMenuBuilder().setCustomId(`kick_${luckyPlayerId}`).setPlaceholder('اختر شخصاً لطرده!').addOptions(targetOptions);
                     
-                    const turnMsg = await interaction.followUp({ content: `🎯 الدور على <@${luckyPlayerId}> لاختيار ضحية!`, components: [new ActionRowBuilder().addComponents(selectMenu)] });
+                    const turnMsg = await interaction.followUp({ content: `الدور على <@${luckyPlayerId}> لاختيار ضحية!`, components: [new ActionRowBuilder().addComponents(selectMenu)] });
                     
                     const choiceCollector = turnMsg.createMessageComponentCollector({ filter: i => i.user.id === luckyPlayerId, time: 15000, max: 1 });
                     choiceCollector.on('collect', async i => {
                         const kickedId = i.values[0];
                         players = players.filter(id => id !== kickedId);
-                        await i.update({ content: `🔥 تم طرد <@${kickedId}>!`, components: [] });
+                        await i.update({ content: `تم طرد <@${kickedId}>!`, components: [] });
                     });
                     choiceCollector.on('end', async collected => {
                         if (collected.size === 0 && players.length > 1) {
                             const kickedId = players.find(id => id !== luckyPlayerId);
                             players = players.filter(id => id !== kickedId);
-                            await turnMsg.edit({ content: `⏰ انتهى الوقت وتم طرد <@${kickedId}> تلقائياً!`, components: [] });
+                            await turnMsg.edit({ content: `انتهى الوقت وتم طرد <@${kickedId}> تلقائياً!`, components: [] });
                         }
                         setTimeout(runRouletteRound, 2000);
                     });
@@ -459,7 +462,7 @@ client.on('interactionCreate', async interaction => {
         }
         else if (gameType === 'أعلام') {
             activeGame = { type: 'أعلام', points: customPoints, missedCount: 0, isProcessing: false };
-            await interaction.reply('🎮 جاري بدء لعبة الأعلام...');
+            await interaction.reply('جاري بدء لعبة الأعلام...');
             await sendNextFlag(interaction.channel);
         }
     }
@@ -482,7 +485,7 @@ client.on('interactionCreate', async interaction => {
         const pts = interaction.options.getInteger('points');
         const total = (userPoints.get(target.id) || 0) + pts;
         userPoints.set(target.id, total);
-        await interaction.reply(`✅ تمت الإضافة لـ <@${target.id}> (المجموع: ${total})`);
+        await interaction.reply(`تمت الإضافة لـ <@${target.id}> (المجموع: ${total})`);
     }
     else if (commandName === 'resetpoints') {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
