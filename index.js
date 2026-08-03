@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
-const { createCanvas } = require('canvas');
+const { createCanvas, loadImage } = require('canvas');
 const express = require('express');
 
 const app = express();
@@ -86,7 +86,7 @@ function isStaff(member) {
     return hasAdmin || hasCustomRole;
 }
 
-async function createWheelImage(players, clientInstance, guildId, selectedPlayerId = null) {
+async function createWheelImage(players, clientInstance, guildId, selectedPlayerId = null, currentRotation = 0) {
     const width = 500;
     const height = 500;
     const canvas = createCanvas(width, height);
@@ -98,6 +98,11 @@ async function createWheelImage(players, clientInstance, guildId, selectedPlayer
     const sliceAngle = (2 * Math.PI) / players.length;
 
     const colors = ['#2563eb', '#1d4ed8', '#1e40af', '#3b82f6', '#1e3a8a', '#60a5fa'];
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(currentRotation);
+    ctx.translate(-centerX, -centerY);
 
     for (let i = 0; i < players.length; i++) {
         const startAngle = i * sliceAngle;
@@ -134,11 +139,38 @@ async function createWheelImage(players, clientInstance, guildId, selectedPlayer
         ctx.fillText(displayName, radius - 30, 6);
         ctx.restore();
     }
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 60, 0, 2 * Math.PI);
+    ctx.closePath();
+    ctx.clip();
+
+    let drawnAvatar = false;
+    if (selectedPlayerId) {
+        try {
+            const guild = clientInstance.guilds.cache.get(guildId);
+            if (guild) {
+                const member = await guild.members.fetch(selectedPlayerId).catch(() => null);
+                if (member) {
+                    const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 128 });
+                    const avatarImage = await loadImage(avatarURL);
+                    ctx.drawImage(avatarImage, centerX - 60, centerY - 60, 120, 120);
+                    drawnAvatar = true;
+                }
+            }
+        } catch (e) {}
+    }
+
+    if (!drawnAvatar) {
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(centerX - 60, centerY - 60, 120, 120);
+    }
+    ctx.restore();
 
     ctx.beginPath();
     ctx.arc(centerX, centerY, 60, 0, 2 * Math.PI);
-    ctx.fillStyle = '#0f172a';
-    ctx.fill();
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4;
     ctx.stroke();
@@ -478,21 +510,52 @@ client.on('interactionCreate', async interaction => {
                         return interaction.followUp({ content: `انتهت لعبة الروليت! الفائز الأخير هو <@${players[0]}> وحصل على ${customPoints} نقطة!` });
                     }
 
-                    const luckyPlayerId = players[Math.floor(Math.random() * players.length)];
-                    const attachment = await createWheelImage(players, client, interaction.guildId, luckyPlayerId);
+                    // اختيار الفائز العشوائي
+                    const luckyPlayerIndex = Math.floor(Math.random() * players.length);
+                    const luckyPlayerId = players[luckyPlayerIndex];
+                    
+                    // حساب زاوية الوقوف بحيث يستقر الفائز تماماً عند السهم (باليمين)
+                    const sliceAngle = (2 * Math.PI) / players.length;
+                    const targetAngle = 5 * (2 * Math.PI) + (2 * Math.PI - (luckyPlayerIndex * sliceAngle + sliceAngle / 2));
+
+                    // محاكاة تأثير الدوران (5 دورات تدريجية)
+                    const steps = 5;
+                    let currentMsg = null;
+
+                    for (let step = 1; step <= steps; step++) {
+                        const intermediateRotation = (targetAngle / steps) * step;
+                        const tempAttachment = await createWheelImage(players, client, interaction.guildId, luckyPlayerId, intermediateRotation);
+                        
+                        const spinningEmbed = new EmbedBuilder()
+                            .setColor(0x0099FF)
+                            .setTitle('عجلة الروليت')
+                            .setDescription(`**جاري تدوير العجلة... الدورة (${step}/5)**`)
+                            .setImage('attachment://wheel.png');
+
+                        if (step === 1) {
+                            currentMsg = await interaction.followUp({ embeds: [spinningEmbed], files: [tempAttachment] });
+                        } else {
+                            try {
+                                await currentMsg.edit({ embeds: [spinningEmbed], files: [tempAttachment] });
+                            } catch (e) {}
+                        }
+                        // انتظار قصير بين كل لقطة لتعطي شعور الحركة الحقيقية
+                        await new Promise(resolve => setTimeout(resolve, 800));
+                    }
 
                     const targetOptions = players.filter(id => id !== luckyPlayerId).map(id => ({ label: `طرد اللاعب`, value: id }));
                     const selectMenu = new StringSelectMenuBuilder().setCustomId(`kick_${luckyPlayerId}`).setPlaceholder('اختر لاعباً لطرده من العجلة').addOptions(targetOptions);
                     
-                    const embed = new EmbedBuilder()
+                    const finalEmbed = new EmbedBuilder()
                         .setColor(0x0099FF)
                         .setTitle('عجلة الروليت')
                         .setDescription(`**اللاعب الذي وقع عليه الاختيار:** <@${luckyPlayerId}>\n\n**لديك 15 ثانية لاختيار لاعب لطرده:**`)
                         .setImage('attachment://wheel.png');
 
-                    const turnMsg = await interaction.followUp({ embeds: [embed], files: [attachment], components: [new ActionRowBuilder().addComponents(selectMenu)] });
+                    const finalAttachment = await createWheelImage(players, client, interaction.guildId, luckyPlayerId, targetAngle);
+                    await currentMsg.edit({ embeds: [finalEmbed], files: [finalAttachment], components: [new ActionRowBuilder().addComponents(selectMenu)] });
                     
-                    const choiceCollector = turnMsg.createMessageComponentCollector({ filter: i => i.user.id === luckyPlayerId, time: 15000, max: 1 });
+                    const choiceCollector = currentMsg.createMessageComponentCollector({ filter: i => i.user.id === luckyPlayerId, time: 15000, max: 1 });
                     choiceCollector.on('collect', async i => {
                         const kickedId = i.values[0];
                         players = players.filter(id => id !== kickedId);
@@ -502,7 +565,7 @@ client.on('interactionCreate', async interaction => {
                         if (collected.size === 0 && players.length > 1) {
                             const kickedId = players.find(id => id !== luckyPlayerId);
                             players = players.filter(id => id !== kickedId);
-                            await turnMsg.edit({ content: `انتهى الوقت ولم يقم اللاعب بالخيار، تم طرد <@${kickedId}> تلقائياً.`, embeds: [], files: [], components: [] });
+                            await currentMsg.edit({ content: `انتهى الوقت ولم يقم اللاعب بالخيار، تم طرد <@${kickedId}> تلقائياً.`, embeds: [], files: [], components: [] });
                         }
                         setTimeout(runRouletteRound, 2000);
                     });
