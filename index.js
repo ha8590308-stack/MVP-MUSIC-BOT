@@ -124,7 +124,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ embeds: [helpEmbed] });
     } 
     else if (commandName === 'games') {
-        await interaction.reply('الألعاب: سرعة، فك، أدمج، أعلام، روليت');
+        await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\` | \`روليت\``);
     } 
     else if (commandName === 'play') {
         const gameType = interaction.options.getString('game');
