@@ -175,8 +175,8 @@ client.on('messageCreate', async message => {
                 activeGame.answer = nextWord;
                 const embed = new EmbedBuilder()
                     .setColor(0x57F287)
-                    .setTitle('⚡ لعبة السرعة')
-                    .setDescription(`الكلمة:\n\`\`\`fix\n${nextWord}\n\`\`\`\n(النقاط: ${activeGame.points})`);
+                    .setTitle('سرعة')
+                    .setDescription(`أسرع شخص يكتب الكلمة الموجودة تحت يفوز في اللعبة\n\n# ${nextWord}\n\n*(النقاط: ${activeGame.points})*`);
                 return message.channel.send({ embeds: [embed] });
             }
 
@@ -186,8 +186,8 @@ client.on('messageCreate', async message => {
                 activeGame.answer = makeSpaced(nextWord);
                 const embed = new EmbedBuilder()
                     .setColor(0xFEE75C)
-                    .setTitle('🧩 لعبة فك الكلمات')
-                    .setDescription(`فكك الكلمة التالية:\n\`\`\`fix\n${nextWord}\n\`\`\`\n(النقاط: ${activeGame.points})`);
+                    .setTitle('فك الكلمات')
+                    .setDescription(`أسرع شخص يفكك الكلمة التالية:\n\n# ${nextWord}\n\n*(النقاط: ${activeGame.points})*`);
                 return message.channel.send({ embeds: [embed] });
             }
 
@@ -197,8 +197,8 @@ client.on('messageCreate', async message => {
                 activeGame.answer = nextWord;
                 const embed = new EmbedBuilder()
                     .setColor(0x5865F2)
-                    .setTitle('🔗 لعبة أدمج الحروف')
-                    .setDescription(`أدمج الحروف لتصبح كلمة:\n\`\`\`fix\n${makeSpaced(nextWord)}\n\`\`\`\n(النقاط: ${activeGame.points})`);
+                    .setTitle('أدمج الحروف')
+                    .setDescription(`أسرع شخص يدمج الحروف لتصبح كلمة:\n\n# ${makeSpaced(nextWord)}\n\n*(النقاط: ${activeGame.points})*`);
                 return message.channel.send({ embeds: [embed] });
             }
 
@@ -283,8 +283,8 @@ client.on('interactionCreate', async interaction => {
             activeGame = { type: 'سرعة', answer: word, points: customPoints };
             const embed = new EmbedBuilder()
                 .setColor(0x57F287)
-                .setTitle('⚡ لعبة السرعة')
-                .setDescription(`الكلمة:\n\`\`\`fix\n${word}\n\`\`\`\n(النقاط: ${customPoints})`);
+                .setTitle('سرعة')
+                .setDescription(`أسرع شخص يكتب الكلمة الموجودة تحت يفوز في اللعبة\n\n# ${word}\n\n*(النقاط: ${customPoints})*`);
             await interaction.reply({ embeds: [embed] });
         } 
         else if (gameType === 'فك') {
@@ -292,8 +292,8 @@ client.on('interactionCreate', async interaction => {
             activeGame = { type: 'فك', answer: makeSpaced(word), points: customPoints };
             const embed = new EmbedBuilder()
                 .setColor(0xFEE75C)
-                .setTitle('🧩 لعبة فك الكلمات')
-                .setDescription(`فكك الكلمة التالية:\n\`\`\`fix\n${word}\n\`\`\`\n(النقاط: ${customPoints})`);
+                .setTitle('فك الكلمات')
+                .setDescription(`أسرع شخص يفكك الكلمة التالية:\n\n# ${word}\n\n*(النقاط: ${customPoints})*`);
             await interaction.reply({ embeds: [embed] });
         } 
         else if (gameType === 'أدمج') {
@@ -301,8 +301,8 @@ client.on('interactionCreate', async interaction => {
             activeGame = { type: 'أدمج', answer: word, points: customPoints };
             const embed = new EmbedBuilder()
                 .setColor(0x5865F2)
-                .setTitle('🔗 لعبة أدمج الحروف')
-                .setDescription(`أدمج الحروف لتصبح كلمة:\n\`\`\`fix\n${makeSpaced(word)}\n\`\`\`\n(النقاط: ${customPoints})`);
+                .setTitle('أدمج الحروف')
+                .setDescription(`أسرع شخص يدمج الحروف لتصبح كلمة:\n\n# ${makeSpaced(word)}\n\n*(النقاط: ${customPoints})*`);
             await interaction.reply({ embeds: [embed] });
         }
         else if (gameType === 'أعلام') {
