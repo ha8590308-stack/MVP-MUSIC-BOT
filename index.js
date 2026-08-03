@@ -97,6 +97,12 @@ async function createWheelImage(players, clientInstance, guildId, selectedPlayer
     const radius = 200;
     const sliceAngle = (2 * Math.PI) / players.length;
 
+    // خلفية دائرية زرقاء بالكامل لضمان عدم ظهور لون أسود
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = '#2563eb';
+    ctx.fill();
+
     const colors = ['#2563eb', '#1d4ed8', '#1e40af', '#3b82f6', '#1e3a8a', '#60a5fa'];
 
     ctx.save();
@@ -141,6 +147,7 @@ async function createWheelImage(players, clientInstance, guildId, selectedPlayer
     }
     ctx.restore();
 
+    // دائرة المنتصف لعرض صورة بروفايل اللاعب
     ctx.save();
     ctx.beginPath();
     ctx.arc(centerX, centerY, 60, 0, 2 * Math.PI);
@@ -164,24 +171,29 @@ async function createWheelImage(players, clientInstance, guildId, selectedPlayer
     }
 
     if (!drawnAvatar) {
-        ctx.fillStyle = '#0f172a';
+        ctx.fillStyle = '#1e293b';
         ctx.fillRect(centerX - 60, centerY - 60, 120, 120);
     }
     ctx.restore();
 
+    // إطار دائرة المنتصف
     ctx.beginPath();
     ctx.arc(centerX, centerY, 60, 0, 2 * Math.PI);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4;
     ctx.stroke();
 
+    // السهم الأيمن باللون الأبيض الواضح
     ctx.beginPath();
-    ctx.moveTo(width - 10, centerY - 15);
-    ctx.lineTo(width, centerY);
-    ctx.lineTo(width - 10, centerY + 15);
+    ctx.moveTo(width - 5, centerY - 15);
+    ctx.lineTo(width - 25, centerY);
+    ctx.lineTo(width - 5, centerY + 15);
     ctx.closePath();
     ctx.fillStyle = '#ffffff';
     ctx.fill();
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
     return new AttachmentBuilder(canvas.toBuffer(), { name: 'wheel.png' });
 }
@@ -510,15 +522,12 @@ client.on('interactionCreate', async interaction => {
                         return interaction.followUp({ content: `انتهت لعبة الروليت! الفائز الأخير هو <@${players[0]}> وحصل على ${customPoints} نقطة!` });
                     }
 
-                    // اختيار الفائز العشوائي
                     const luckyPlayerIndex = Math.floor(Math.random() * players.length);
                     const luckyPlayerId = players[luckyPlayerIndex];
                     
-                    // حساب زاوية الوقوف بحيث يستقر الفائز تماماً عند السهم (باليمين)
                     const sliceAngle = (2 * Math.PI) / players.length;
                     const targetAngle = 5 * (2 * Math.PI) + (2 * Math.PI - (luckyPlayerIndex * sliceAngle + sliceAngle / 2));
 
-                    // محاكاة تأثير الدوران (5 دورات تدريجية)
                     const steps = 5;
                     let currentMsg = null;
 
@@ -539,7 +548,6 @@ client.on('interactionCreate', async interaction => {
                                 await currentMsg.edit({ embeds: [spinningEmbed], files: [tempAttachment] });
                             } catch (e) {}
                         }
-                        // انتظار قصير بين كل لقطة لتعطي شعور الحركة الحقيقية
                         await new Promise(resolve => setTimeout(resolve, 800));
                     }
 
