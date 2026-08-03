@@ -15,30 +15,17 @@ const client = new Client({
 });
 
 const userPoints = new Map();
-let activeGame = null; // يحفظ تفاصيل اللعبة النشطة (سرعة، فك، أدمج، أعلام)
-let speedInterval = null; // مؤقت لعبة السرعة المستمرة
+let activeGame = null;
 
-// قائمة أعلام الدول العشوائية
 const flagsList = [
-    { name: 'السعودية', flag: '🇸🇦' },
-    { name: 'الإمارات', flag: '🇦🇪' },
-    { name: 'الكويت', flag: '🇰🇼' },
-    { name: 'قطر', flag: '🇶🇦' },
-    { name: 'البحرين', flag: '🇧🇭' },
-    { name: 'عمان', flag: '🇴🇲' },
-    { name: 'مصر', flag: '🇪🇬' },
-    { name: 'المغرب', flag: '🇲🇦' },
-    { name: 'الجزائر', flag: '🇩🇿' },
-    { name: 'العراق', flag: '🇮🇶' },
-    { name: 'الاردن', flag: '🇯🇴' },
-    { name: 'امريكا', flag: '🇺🇸' },
-    { name: 'بريطانيا', flag: '🇬🇧' },
-    { name: 'فرنسا', flag: '🇫🇷' },
-    { name: 'تركيا', flag: '🇹🇷' }
+    { name: 'السعودية', flag: '🇸🇦' }, { name: 'الإمارات', flag: '🇦🇪' }, { name: 'الكويت', flag: '🇰🇼' },
+    { name: 'قطر', flag: '🇶🇦' }, { name: 'البحرين', flag: '🇧🇭' }, { name: 'عمان', flag: '🇴🇲' },
+    { name: 'مصر', flag: '🇪🇬' }, { name: 'المغرب', flag: '🇲🇦' }, { name: 'الجزائر', flag: '🇩🇿' },
+    { name: 'العراق', flag: '🇮🇶' }, { name: 'الاردن', flag: '🇯🇴' }, { name: 'امريكا', flag: '🇺🇸' },
+    { name: 'بريطانيا', flag: '🇬🇧' }, { name: 'فرنسا', flag: '🇫🇷' }, { name: 'تركيا', flag: '🇹🇷' }
 ];
 
-// قائمة الكلمات العشوائية للعبة السرعة المستمرة
-const speedWords = ['برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنه', 'بطولة'];
+const speedWords = ['برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 'فوز', 'لعبة'];
 
 const commands = [
     new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة'),
@@ -51,16 +38,16 @@ const commands = [
                 .setDescription('اختر اللعبة')
                 .setRequired(true)
                 .addChoices(
-                    { name: 'سرعة (كلمات متتالية لا تتوقف)', value: 'سرعة' },
-                    { name: 'فك (فك الكلمات)', value: 'فك' },
-                    { name: 'أدمج (تجميع الحروف)', value: 'أدمج' },
-                    { name: 'أعلام (تخمين أعلام الدول)', value: 'أعلام' },
-                    { name: 'روليت (عجلة الحظ والإنضمام)', value: 'روليت' }
+                    { name: 'سرعة', value: 'سرعة' },
+                    { name: 'فك', value: 'فك' },
+                    { name: 'أدمج', value: 'أدمج' },
+                    { name: 'أعلام', value: 'أعلام' },
+                    { name: 'روليت', value: 'روليت' }
                 )
         )
         .addIntegerOption(option =>
             option.setName('points')
-                .setDescription('عدد النقاط لكل إجابة صحيحة')
+                .setDescription('عدد النقاط')
                 .setRequired(true)
         ),
     new SlashCommandBuilder().setName('stop').setDescription('إيقاف اللعبة الحالية'),
@@ -97,13 +84,10 @@ client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     if (message.content === 'وقف' || message.content === '/stop') {
-        if (speedInterval) clearInterval(speedInterval);
-        speedInterval = null;
         activeGame = null;
         return message.reply('تم إيقاف اللعبة.');
     }
 
-    // التحقق من الإجابات للألعاب العادية (فك، أدمج، أعلام، أو سرعة)
     if (activeGame && message.content.trim() === activeGame.answer) {
         const userId = message.author.id;
         const currentPoints = userPoints.get(userId) || 0;
@@ -111,7 +95,6 @@ client.on('messageCreate', async message => {
         
         userPoints.set(userId, totalPoints);
 
-        // لو كانت اللعبة سرعة، لا نوقفها بل نرسل كلمة جديدة مباشرة
         if (activeGame.type === 'سرعة') {
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
             const randomWord = speedWords[Math.floor(Math.random() * speedWords.length)];
@@ -119,122 +102,113 @@ client.on('messageCreate', async message => {
             return message.channel.send(`الكلمة التالية: **${randomWord}**`);
         }
 
-        // للألعاب الأخرى تنتهي الجولة
         activeGame = null;
-        await message.reply(`فاز <@${userId}> وأخذ ${activeGame?.points || 10} نقطة.`);
+        await message.reply(`فاز <@${userId}> وأخذ ${totalPoints} نقطة.`);
     }
 });
 
 client.on('interactionCreate', async interaction => {
-    if (interaction.isChatInputCommand()) {
-        const { commandName } = interaction;
+    if (!interaction.isChatInputCommand()) return;
+    const { commandName } = interaction;
 
-        if (commandName === 'help') {
-            const helpEmbed = new EmbedBuilder()
-                .setTitle('قائمة الأوامر')
-                .setColor(0x0099FF)
-                .addFields(
-                    { name: '/play', value: 'بدء لعبة وتحديد النقاط' },
-                    { name: '/stop', value: 'إيقاف اللعبة' },
-                    { name: '/games', value: 'عرض الألعاب' },
-                    { name: '/points', value: 'عرض النقاط' }
-                );
-            await interaction.reply({ embeds: [helpEmbed] });
+    if (commandName === 'help') {
+        const helpEmbed = new EmbedBuilder()
+            .setTitle('قائمة الأوامر')
+            .setColor(0x0099FF)
+            .addFields(
+                { name: '/play', value: 'بدء لعبة وتحديد النقاط' },
+                { name: '/stop', value: 'إيقاف اللعبة' },
+                { name: '/games', value: 'عرض الألعاب' },
+                { name: '/points', value: 'عرض النقاط' }
+            );
+        await interaction.reply({ embeds: [helpEmbed] });
+    } 
+    else if (commandName === 'games') {
+        await interaction.reply('الألعاب: سرعة، فك، أدمج، أعلام، روليت');
+    } 
+    else if (commandName === 'play') {
+        const gameType = interaction.options.getString('game');
+        const customPoints = interaction.options.getInteger('points');
+
+        if (gameType === 'روليت') {
+            const participants = new Set();
+            const joinButton = new ButtonBuilder()
+                .setCustomId('join_roulette')
+                .setLabel('انضمام للعبة 🎮')
+                .setStyle(ButtonStyle.Success);
+
+            const row = new ActionRowBuilder().addComponents(joinButton);
+            const msg = await interaction.reply({ 
+                content: 'بدأت لعبة الروليت! اضغط على زر انضمام (لديك 10 ثوانٍ):', 
+                components: [row], 
+                fetchReply: true 
+            });
+
+            const collector = msg.createMessageComponentCollector({ time: 10000 });
+
+            collector.on('collect', async i => {
+                if (!participants.has(i.user.id)) {
+                    participants.add(i.user.id);
+                    await i.reply({ content: 'تم انضمامك بنجاح!', ephemeral: true });
+                } else {
+                    await i.reply({ content: 'أنت منضم مسبقاً!', ephemeral: true });
+                }
+            });
+
+            collector.on('end', async () => {
+                const players = Array.from(participants);
+                if (players.length === 0) {
+                    return interaction.editReply({ content: 'لم يشارك أحد في الروليت.', components: [] });
+                }
+                const winnerId = players[Math.floor(Math.random() * players.length)];
+                const currentPoints = userPoints.get(winnerId) || 0;
+                userPoints.set(winnerId, currentPoints + customPoints);
+
+                await interaction.editReply({ 
+                    content: `فاز <@${winnerId}> في الروليت وأخذ ${customPoints} نقطة.`, 
+                    components: [] 
+                });
+            });
+            return;
+        }
+
+        if (gameType === 'سرعة') {
+            const firstWord = speedWords[Math.floor(Math.random() * speedWords.length)];
+            activeGame = { type: 'سرعة', answer: firstWord, points: customPoints };
+            await interaction.reply(`لعبة السرعة بدأت! الكلمة الأولى: **${firstWord}** (اكتب وقف للإيقاف)`);
         } 
-        else if (commandName === 'games') {
-            await interaction.reply('الألعاب المتوفرة: سرعة، فك، أدمج، أعلام، روليت');
+        else if (gameType === 'فك') {
+            activeGame = { type: 'فك', answer: 'ديسكورد', points: customPoints };
+            await interaction.reply(`لعبة فك الكلمات بدأت! الكلمة: د ي س ك و ر د - النقاط: ${customPoints}`);
         } 
-        else if (commandName === 'play') {
-            const gameType = interaction.options.getString('game');
-            const customPoints = interaction.options.getInteger('points');
-
-            if (speedInterval) clearInterval(speedInterval);
-
-            if (gameType === 'روليت') {
-                // نظام روليت مع أزرار انضمام وعد تنازلي
-                const participants = new Set();
-                const joinButton = new ButtonBuilder()
-                    .setCustomId('join_roulette')
-                    .setLabel('انضمام للعبة 🎮')
-                    .setStyle(ButtonStyle.Success);
-
-                const row = new ActionRowBuilder().addComponents(joinButton);
-                const msg = await interaction.reply({ 
-                    content: '🎡 **بدأت لعبة الروليت!** اضغط على الزر أدناه للانضمام (لديك 10 ثوانٍ):', 
-                    components: [row], 
-                    fetchReply: true 
-                });
-
-                const collector = msg.createMessageComponentCollector({ time: 10000 });
-
-                collector.on('collect', async i => {
-                    if (!participants.has(i.user.id)) {
-                        participants.add(i.user.id);
-                        await i.reply({ content: '✅ تم انضمامك للروليت بنجاح!', ephemeral: true });
-                    } else {
-                        await i.reply({ content: '⚠️ أنت منضم مسبقاً!', ephemeral: true });
-                    }
-                });
-
-                collector.on('end', async () => {
-                    const players = Array.from(participants);
-                    if (players.length === 0) {
-                        return interaction.editReply({ content: '❌ لم يشارك أحد في لعبة الروليت.', components: [] });
-                    }
-                    const winnerId = players[Math.floor(Math.random() * players.length)];
-                    const currentPoints = userPoints.get(winnerId) || 0;
-                    userPoints.set(winnerId, currentPoints + customPoints);
-
-                    await interaction.editReply({ 
-                        content: `🎉 انتهى العد التنازلي! الفائز في الروليت هو <@${winnerId}> وحصل على ${customPoints} نقطة! 🏆`, 
-                        components: [] 
-                    });
-                });
-                return;
-            }
-
-            // باقي الألعاب
-            if (gameType === 'سرعة') {
-                const firstWord = speedWords[Math.floor(Math.random() * speedWords.length)];
-                activeGame = { type: 'سرعة', answer: firstWord, points: customPoints };
-                await interaction.reply(`لعبة السرعة بدأت (مستمرة حتى تكتب وقف)! الكلمة الأولى: **${firstWord}**`);
-            } 
-            else if (gameType === 'فك') {
-                activeGame = { type: 'فك', answer: 'ديسكورد', points: customPoints };
-                await interaction.reply(`لعبة فك الكلمات بدأت! الكلمة: د ي س ك و ر د - النقاط: ${customPoints}`);
-            } 
-            else if (gameType === 'أدمج') {
-                activeGame = { type: 'أدمج', answer: 'تحدي', points: customPoints };
-                await interaction.reply(`لعبة أدمج الحروف بدأت! الحروف: ت ح د ي - النقاط: ${customPoints}`);
-            }
-            else if (gameType === 'أعلام') {
-                const randomFlag = flagsList[Math.floor(Math.random() * flagsList.length)];
-                activeGame = { type: 'أعلام', answer: randomFlag.name, points: customPoints };
-                await interaction.reply(`لعبة الأعلام بدأت! ما هو اسم الدولة لهذا العلم ${randomFlag.flag}؟ - النقاط: ${customPoints}`);
-            }
+        else if (gameType === 'أدمج') {
+            activeGame = { type: 'أدمج', answer: 'تحدي', points: customPoints };
+            await interaction.reply(`لعبة أدمج الحروف بدأت! الحروف: ت ح د ي - النقاط: ${customPoints}`);
         }
-        else if (commandName === 'stop') {
-            if (speedInterval) clearInterval(speedInterval);
-            speedInterval = null;
-            activeGame = null;
-            await interaction.reply('تم إيقاف اللعبة.');
+        else if (gameType === 'أعلام') {
+            const randomFlag = flagsList[Math.floor(Math.random() * flagsList.length)];
+            activeGame = { type: 'أعلام', answer: randomFlag.name, points: customPoints };
+            await interaction.reply(`لعبة الأعلام بدأت! ما اسم الدولة لهذا العلم ${randomFlag.flag}؟ - النقاط: ${customPoints}`);
         }
-        else if (commandName === 'points') {
-            const targetUser = interaction.options.getUser('user') || interaction.user;
-            const points = userPoints.get(targetUser.id) || 0;
-            await interaction.reply(`نقاط <@${targetUser.id}>: ${points}`);
-        }
-        else if (commandName === 'resetpoints') {
-            const targetUser = interaction.options.getUser('user');
-            userPoints.set(targetUser.id, 0);
-            await interaction.reply(`تم تصفير نقاط <@${targetUser.id}>.`);
-        }
-        else if (commandName === 'resetallpoints') {
-            userPoints.clear();
-            await interaction.reply('تم تصفير نقاط الجميع.');
-        }
+    }
+    else if (commandName === 'stop') {
+        activeGame = null;
+        await interaction.reply('تم إيقاف اللعبة.');
+    }
+    else if (commandName === 'points') {
+        const targetUser = interaction.options.getUser('user') || interaction.user;
+        const points = userPoints.get(targetUser.id) || 0;
+        await interaction.reply(`نقاط <@${targetUser.id}>: ${points}`);
+    }
+    else if (commandName === 'resetpoints') {
+        const targetUser = interaction.options.getUser('user');
+        userPoints.set(targetUser.id, 0);
+        await interaction.reply(`تم تصفير نقاط <@${targetUser.id}>.`);
+    }
+    else if (commandName === 'resetallpoints') {
+        userPoints.clear();
+        await interaction.reply('تم تصفير نقاط الجميع.');
     }
 });
 
 client.login(TOKEN);
-ض
