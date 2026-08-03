@@ -20,7 +20,6 @@ let allowedRoleId = null;
 
 // ==================== بنوك البيانات ====================
 
-// بنك الأعلام (متروك كما هو بدون تعديل بناءً على رغبتك)
 const allFlagsList = [
     { name: 'السعودية', code: 'sa' }, { name: 'الإمارات', code: 'ae' }, { name: 'الكويت', code: 'kw' },
     { name: 'قطر', code: 'qa' }, { name: 'البحرين', code: 'bh' }, { name: 'عمان', code: 'om' },
@@ -44,7 +43,6 @@ const allFlagsList = [
     { name: 'منغوليا', code: 'mn' }
 ];
 
-// بنك الكلمات الأساسي للألعاب النصية (سرعة، فك، أدمج)
 const baseWordsList = [
     'برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 
     'فوز', 'لعبة', 'حاسب', 'شبكة', 'تطبيق', 'مطور', 'قناة', 'رومات', 'تفاعل', 'شات', 
@@ -56,7 +54,6 @@ const baseWordsList = [
 let availableWords = [];
 let availableFlags = [];
 
-// دالة خلط الكلمات عشوائياً (Fisher-Yates) لمنع التكرار تماماً
 function shuffleArray(array) {
     let arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
@@ -66,7 +63,6 @@ function shuffleArray(array) {
     return arr;
 }
 
-// دالة سحب كلمة فريدة تماماً وعدم إعادتها إلا إذا انتهت القائمة بالكامل
 function getUniqueWord() {
     if (availableWords.length === 0) {
         availableWords = shuffleArray(baseWordsList);
@@ -74,7 +70,6 @@ function getUniqueWord() {
     return availableWords.pop();
 }
 
-// دالة الأعلام الأصلية الخاصة بك كما طلبت
 function getUniqueFlag() {
     if (availableFlags.length === 0) availableFlags = [...allFlagsList];
     const index = Math.floor(Math.random() * availableFlags.length);
@@ -95,7 +90,7 @@ function isStaff(member) {
 // ==================== الأوامر ====================
 
 const commands = [
-    new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة'),
+    new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة الشاملة'),
     new SlashCommandBuilder().setName('games').setDescription('عرض الألعاب المتوفرة'),
     new SlashCommandBuilder()
         .setName('play')
@@ -201,7 +196,6 @@ function setGameTimeout(channel) {
     }, 30000);
 }
 
-// دالة الأعلام الأصلية الخاصة بك
 async function sendNextFlag(channel) {
     if (!activeGame || activeGame.type !== 'أعلام') return;
     if (activeGame.timer) clearTimeout(activeGame.timer);
@@ -340,14 +334,24 @@ client.on('interactionCreate', async interaction => {
 
     if (commandName === 'help') {
         const helpEmbed = new EmbedBuilder()
-            .setTitle('قائمة الأوامر')
+            .setTitle('🤖 قائمة أوامر بوت الألعاب الشاملة')
             .setColor(0x0099FF)
+            .setDescription('هذه قائمة بكل الأوامر والمميزات المتاحة في البوت:')
             .addFields(
-                { name: '/play', value: 'بدء لعبة' },
-                { name: '/stop', value: 'إيقاف اللعبة' },
-                { name: '/games', value: 'عرض الألعاب' },
-                { name: '/points', value: 'عرض النقاط' }
-            );
+                { 
+                    name: '🎮 الألعاب واللعب', 
+                    value: '`/play [الععبة] [النقاط]` - بدء لعبة جديدة (سرعة، فك، أدمج، أعلام، روليت)\n`/stop` أو كلمة `وقف` - إيقاف اللعبة الحالية\n`/games` - عرض قائمة الألعاب المتوفرة' 
+                },
+                { 
+                    name: '🏆 النقاط والصدارة', 
+                    value: '`/points` - عرض نقاطك (أو نقاط شخص آخر عبر تحديد العضو)\nكلمة `توب` - عرض قائمة الترتيب وصدارة النقاط في السيرفر' 
+                },
+                { 
+                    name: '⚙️ أوامر الإدارة والمشرفين', 
+                    value: '`/setrole [الرول]` - تحديد رول التحكم الخاص بالمشرفين\n`/addpoints [العضو] [النقاط]` - إضافة نقاط لعضو\n`/resetpoints [العضو]` - تصفير نقاط عضو محدد\n`/resetallpoints` - تصفير نقاط جميع الأعضاء' 
+                }
+            )
+            .setFooter({ text: 'MVP Games Bot' });
         await interaction.reply({ embeds: [helpEmbed] });
     } 
     else if (commandName === 'games') {
