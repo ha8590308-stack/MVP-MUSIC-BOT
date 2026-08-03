@@ -1,6 +1,8 @@
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('canvas');
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,9 +17,42 @@ const client = new Client({
     ]
 });
 
-const userPoints = new Map();
+// نظام قاعدة بيانات محلية بملفات JSON لضمان عدم ضياع النقاط والرولات أبداً
+const DB_FILE = path.join(__dirname, 'database.json');
+
+function loadDatabase() {
+    try {
+        if (fs.existsSync(DB_FILE)) {
+            const data = fs.readFileSync(DB_FILE, 'utf8');
+            const json = JSON.parse(data);
+            return {
+                points: new Map(json.points || []),
+                allowedRoleId: json.allowedRoleId || null
+            };
+        }
+    } catch (e) {
+        console.error('خطأ في قراءة قاعدة البيانات:', e);
+    }
+    return { points: new Map(), allowedRoleId: null };
+}
+
+function saveDatabase() {
+    try {
+        const data = {
+            points: Array.from(userPoints.entries()),
+            allowedRoleId: allowedRoleId
+        };
+        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+    } catch (e) {
+        console.error('خطأ في حفظ قاعدة البيانات:', e);
+    }
+}
+
+const db = loadDatabase();
+const userPoints = db.points;
+let allowedRoleId = db.allowedRoleId;
+
 let activeGame = null;
-let allowedRoleId = null; 
 
 const allFlagsList = [
     { name: 'السعودية', code: 'sa' }, { name: 'الإمارات', code: 'ae' }, { name: 'الكويت', code: 'kw' },
@@ -84,7 +119,7 @@ function isStaff(member) {
     return hasAdmin || hasCustomRole;
 }
 
-// دالة رسم العجلة مطابقة تماماً لصورتك (ألوان زرقاء متناسقة، دائرة منتصف بإطار أبيض، سهم أبيض باليمين)
+// دالة رسم العجلة المطابقة للصورة تماماً
 async function createWheelImage(players, clientInstance, guildId, centerUserId = null, currentRotation = 0) {
     const width = 500;
     const height = 500;
@@ -96,11 +131,9 @@ async function createWheelImage(players, clientInstance, guildId, centerUserId =
     const radius = 210;
     const sliceAngle = (2 * Math.PI) / players.length;
 
-    // خلفية ديسكورد الداكنة (مطابقة تماماً للصورة)
     ctx.fillStyle = '#313338';
     ctx.fillRect(0, 0, width, height);
 
-    // درجات الألوان الزرقاء الرائعة للشرائح المتبادلة تماماً مثل الصورة المرفقة
     const sliceColors = ['#1d4ed8', '#2563eb', '#3b82f6', '#1e40af', '#60a5fa', '#1d3557'];
 
     ctx.save();
@@ -112,7 +145,6 @@ async function createWheelImage(players, clientInstance, guildId, centerUserId =
         const startAngle = i * sliceAngle;
         const endAngle = (i + 1) * sliceAngle;
 
-        // رسم قطاع الشريحة
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
         ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
@@ -124,7 +156,6 @@ async function createWheelImage(players, clientInstance, guildId, centerUserId =
         ctx.lineWidth = 3.5;
         ctx.stroke();
 
-        // كتابة اسم اللاعب بداخل الشريحة باتجاه الزاوية الصحيحة
         ctx.save();
         ctx.translate(centerX, centerY);
         const midAngle = startAngle + (sliceAngle / 2);
@@ -150,14 +181,12 @@ async function createWheelImage(players, clientInstance, guildId, centerUserId =
     }
     ctx.restore();
 
-    // الإطار الخارجي الأبيض الدائري للعجلة
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // دائرة المنتصف (بروفايل الشخص دائري وبإطار أبيض ناصع تماماً مثل الصورة)
     const centerRadius = 58;
     ctx.save();
     ctx.beginPath();
@@ -187,14 +216,12 @@ async function createWheelImage(players, clientInstance, guildId, centerUserId =
     }
     ctx.restore();
 
-    // رسم الإطار الأبيض الناصع حول دائرة البروفايل بالمنتصف
     ctx.beginPath();
     ctx.arc(centerX, centerY, centerRadius, 0, 2 * Math.PI);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // السهم الأبيض الموجود على الجانب الأيمن (مطابق للصورة تماماً)
     ctx.beginPath();
     ctx.moveTo(width - 4, centerY - 16);
     ctx.lineTo(width - 30, centerY);
@@ -364,6 +391,7 @@ client.on('messageCreate', async message => {
             const userId = message.author.id;
             const totalPoints = (userPoints.get(userId) || 0) + activeGame.points;
             userPoints.set(userId, totalPoints);
+            saveDatabase(); // حفظ دائم للنقاط
 
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
             
@@ -398,7 +426,8 @@ client.on('interactionCreate', async interaction => {
     else if (commandName === 'setrole') {
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'للأدمن فقط', ephemeral: true });
         allowedRoleId = interaction.options.getRole('role').id;
-        await interaction.reply(`تم تعيين رول التحكم بنجاح.`);
+        saveDatabase(); // حفظ دائم لرول التحكم
+        await interaction.reply(`تم تعيين رول التحكم بنجاح وحفظه بشكل دائم.`);
     }
     else if (commandName === 'play') {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'ليس لديك صلاحية.', ephemeral: true });
@@ -437,6 +466,7 @@ client.on('interactionCreate', async interaction => {
                 if (players.length === 0) return interaction.editReply({ content: 'انتهى الوقت بدون مشاركين.', embeds: [], components: [] });
                 if (players.length === 1) {
                     userPoints.set(players[0], (userPoints.get(players[0]) || 0) + customPoints);
+                    saveDatabase();
                     return interaction.editReply({ content: `فاز اللاعب <@${players[0]}> تلقائياً بـ ${customPoints} نقطة لعدم وجود منافسين!`, embeds: [], components: [] });
                 }
 
@@ -445,6 +475,7 @@ client.on('interactionCreate', async interaction => {
                 const runRouletteRound = async () => {
                     if (players.length <= 1) {
                         userPoints.set(players[0], (userPoints.get(players[0]) || 0) + customPoints);
+                        saveDatabase();
                         return interaction.followUp({ content: `انتهت لعبة الروليت! الفائز الأخير هو <@${players[0]}> وحصل على ${customPoints} نقطة!` });
                     }
 
@@ -542,17 +573,20 @@ client.on('interactionCreate', async interaction => {
         const target = interaction.options.getUser('user');
         const pts = interaction.options.getInteger('points');
         userPoints.set(target.id, (userPoints.get(target.id) || 0) + pts);
-        await interaction.reply(`تمت الإضافة لـ <@${target.id}>`);
+        saveDatabase();
+        await interaction.reply(`تمت الإضافة لـ <@${target.id}> وحفظها.`);
     }
     else if (commandName === 'resetpoints') {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
         const target = interaction.options.getUser('user');
         userPoints.set(target.id, 0);
+        saveDatabase();
         await interaction.reply(`تم تصفير نقاط <@${target.id}>.`);
     }
     else if (commandName === 'resetallpoints') {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
         userPoints.clear();
+        saveDatabase();
         await interaction.reply('تم تصفير نقاط الجميع.');
     }
 });
