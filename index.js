@@ -15,8 +15,6 @@ const client = new Client({
     ]
 });
 
-// ==================== [ إعدادات قاعدة البيانات - آمنة ] ====================
-// هنا يسحب الرابط من إعدادات البيئة (Environment Variables) في رندر
 const uri = process.env.MONGO_URI; 
 const dbClient = new MongoClient(uri);
 
@@ -428,7 +426,7 @@ client.on('interactionCreate', async interaction => {
         activeGame = null;
         await interaction.reply('تم إيقاف اللعبة.');
     }
-    else if (commandName:: === 'points' || commandName === 'points') {
+    else if (commandName === 'points') {
         const target = interaction.options.getUser('user') || interaction.user;
         await interaction.reply(`نقاط <@${target.id}>: ${userPoints.get(target.id) || 0}`);
     }
@@ -441,7 +439,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply(`تمت الإضافة لـ <@${target.id}> وحفظها.`);
     }
     else if (commandName === 'resetpoints') {
-        if (!isStaff(interaction.member)) return, interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
+        if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
         const target = interaction.options.getUser('user');
         await clearUserPointsDB(target.id);
         await interaction.reply(`تم تصفير نقاط <@${target.id}>.`);
