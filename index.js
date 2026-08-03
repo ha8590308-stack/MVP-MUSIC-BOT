@@ -1,13 +1,13 @@
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const express = require('express');
 
-// إعداد سيرفر الويب البسيط لضمان بقاء البوت أونلاين على Render
+// إعداد سيرفر الويب لضمان عمل البوت 24 ساعة على Render
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is active and running!'));
 app.listen(PORT, () => console.log(`Web server is running on port ${PORT}`));
 
-// إعداد عميل ديسكورد والصلاحيات
+// إعداد عميل ديسكورد
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -16,7 +16,7 @@ const client = new Client({
     ]
 });
 
-// إعداد الأوامر باللغة الإنجليزية لتطابق البوتات الأخرى وتظهر في القائمة
+// تعريف الأوامر الإنجليزية لتظهر في قائمة ديسكورد
 const commands = [
     new SlashCommandBuilder()
         .setName('help')
@@ -29,17 +29,16 @@ const commands = [
         .setDescription('بدء لعبة جديدة')
         .addStringOption(option =>
             option.setName('game')
-                .setDescription('اختر اللعبة (سرعة، فك، أدمج، روليت)')
+                .setDescription('اختر اللعبة')
                 .setRequired(true)
         )
 ].map(command => command.toJSON());
 
-// التوكن ومعرفات البوت والقناة
+// سحب التوكن بأمان، وتثبيت المعرفات
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = '1530851367558840422';
 const GAME_CHANNEL_ID = '1530851367558840422';
 
-// تسجيل الأوامر عند تشغيل البوت
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 client.once('ready', async () => {
@@ -56,13 +55,13 @@ client.once('ready', async () => {
     }
 });
 
-// معالجة الأوامر والتأكد من القناة المخصصة
+// استقبال الأوامر والتحقق من القناة
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
     if (GAME_CHANNEL_ID && interaction.channelId !== GAME_CHANNEL_ID) {
         return interaction.reply({
-            content: `⚠️ Please use the command in a game channel <#${GAME_CHANNEL_ID}>`,
+            content: `⚠️ Please use the command in the game channel <#${GAME_CHANNEL_ID}>`,
             ephemeral: true 
         });
     }
@@ -71,9 +70,8 @@ client.on('interactionCreate', async interaction => {
 
     if (commandName === 'help') {
         const helpEmbed = new EmbedBuilder()
-            .setTitle('📖 قائمة المساعدة - الإعدادات العامة')
+            .setTitle('📖 قائمة المساعدة')
             .setColor(0x0099FF)
-            .setDescription('إليك قائمة الأوامر المتاحة للبوت:')
             .addFields(
                 { name: '/play [game]', value: 'بدء لعبة جديدة', inline: false },
                 { name: '/games', value: 'عرض الألعاب المتوفرة', inline: false },
@@ -82,18 +80,12 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ embeds: [helpEmbed] });
     } 
     else if (commandName === 'games') {
-        await interaction.reply('🎮 **الألعاب المتوفرة حالياً:**\n1. أسرع (سرعة البديهة)\n2. فك (فك الكلمات)\n3. أدمج (تجميع الحروف)\n4. روليت (لعبة العجلة والتحدي)');
+        await interaction.reply('🎮 **الألعاب المتوفرة:**\n1. أسرع\n2. فك\n3. أدمج\n4. روليت');
     } 
     else if (commandName === 'play') {
         const gameType = interaction.options.getString('game');
-        
-        if (gameType === 'روليت') {
-            await interaction.reply('🎡 **بدء لعبة الروليت!** جاري تجهيز العجلة واختيار اللاعبين...');
-        } else {
-            await interaction.reply(`⏳ تم بدء لعبة **${gameType}**! استعدوا للإجابة في الشات.`);
-        }
+        await interaction.reply(`⏳ تم بدء لعبة **${gameType}** بنجاح!`);
     }
 });
 
-// تسجيل الدخول بالبوت
 client.login(TOKEN);
