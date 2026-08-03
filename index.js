@@ -1,7 +1,17 @@
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const express = require('express');
 
-// إعداد سيرفر بسيط لضمان عدم نوم البوت على Render
+// التأكد من وجود المتغيرات الأساسية لمنع حدوث خطأ مفاجئ
+const TOKEN = process.env.DISCORD_TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
+const GAME_CHANNEL_ID = process.env.GAME_CHANNEL_ID;
+
+if (!TOKEN || !CLIENT_ID || !GAME_CHANNEL_ID) {
+    console.error('❌ خطأ: يرجى التأكد من إضافة جميع متغيرات البيئة (DISCORD_TOKEN, CLIENT_ID, GAME_CHANNEL_ID) في لوحة تحكم Render!');
+    process.exit(1);
+}
+
+// إعداد سيرفر الويب البسيط لضمان بقاء البوت أونلاين على Render
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is active and running!'));
@@ -34,25 +44,20 @@ const commands = [
         )
 ].map(command => command.toJSON());
 
-// قراءة البيانات بأمان من متغيرات البيئة (Environment Variables) لحماية التوكن
-const TOKEN = process.env.DISCORD_TOKEN;
-const CLIENT_ID = process.env.1530851367558840422;
-const GAME_CHANNEL_ID = process.env.GAME_CHANNEL_ID;
-
 // تسجيل الأوامر عند تشغيل البوت
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 client.once('ready', async () => {
-    console.log(`Logged in as ${client.user.tag}!`);
+    console.log(`✅ تم تسجيل الدخول بنجاح باسم: ${client.user.tag}!`);
     try {
-        console.log('Started refreshing application (/) commands.');
+        console.log('🔄 جاري تحديث أوامر الـ Slash Commands...');
         await rest.put(
             Routes.applicationCommands(CLIENT_ID),
             { body: commands },
         );
-        console.log('Successfully reloaded application (/) commands.');
+        console.log('✨ تم تحديث الأوامر بنجاح.');
     } catch (error) {
-        console.error(error);
+        console.error('❌ خطأ أثناء تسجيل الأوامر:', error);
     }
 });
 
@@ -64,7 +69,7 @@ client.on('interactionCreate', async interaction => {
     if (interaction.channelId !== GAME_CHANNEL_ID) {
         return interaction.reply({
             content: `⚠️ يرجى استخدام الأوامر داخل قناة الألعاب المخصصة <#${GAME_CHANNEL_ID}>`,
-            ephemeral: true // تظهر الرسالة فقط للمستخدم نفسه
+            ephemeral: true 
         });
     }
 
