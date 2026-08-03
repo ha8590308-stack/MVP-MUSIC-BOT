@@ -102,6 +102,13 @@ client.on('messageCreate', async message => {
             return message.channel.send(`الكلمة التالية:\n\`\`\`fix\n${randomWord}\n\`\`\``);
         }
 
+        if (activeGame.type === 'أعلام') {
+            await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
+            const randomFlag = flagsList[Math.floor(Math.random() * flagsList.length)];
+            activeGame.answer = randomFlag.name;
+            return message.channel.send(`ما هو اسم الدولة لهذا العلم:\n\`\`\`fix\n ${randomFlag.flag} \n\`\`\``);
+        }
+
         activeGame = null;
         await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
     }
@@ -188,7 +195,7 @@ client.on('interactionCreate', async interaction => {
         else if (gameType === 'أعلام') {
             const randomFlag = flagsList[Math.floor(Math.random() * flagsList.length)];
             activeGame = { type: 'أعلام', answer: randomFlag.name, points: customPoints };
-            await interaction.reply(`لعبة الأعلام بدأت! ما اسم الدولة لهذا العلم ${randomFlag.flag}؟ - النقاط: ${customPoints}`);
+            await interaction.reply(`لعبة الأعلام بدأت! ما هو اسم الدولة لهذا العلم:\n\`\`\`fix\n ${randomFlag.flag} \n\`\`\``);
         }
     }
     else if (commandName === 'stop') {
