@@ -1,7 +1,7 @@
 {
-  "name": "discord-games-bot",
+  "name": "mvp-games-bot",
   "version": "1.0.0",
-  "description": "Discord games bot for Render",
+  "description": "Discord Games Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
