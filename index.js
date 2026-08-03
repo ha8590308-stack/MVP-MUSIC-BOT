@@ -18,8 +18,6 @@ const userPoints = new Map();
 let activeGame = null;
 let allowedRoleId = null; 
 
-// ==================== بنوك البيانات ====================
-
 const allFlagsList = [
     { name: 'السعودية', code: 'sa' }, { name: 'الإمارات', code: 'ae' }, { name: 'الكويت', code: 'kw' },
     { name: 'قطر', code: 'qa' }, { name: 'البحرين', code: 'bh' }, { name: 'عمان', code: 'om' },
@@ -86,8 +84,6 @@ function isStaff(member) {
     const hasCustomRole = allowedRoleId && member.roles.cache.has(allowedRoleId);
     return hasAdmin || hasCustomRole;
 }
-
-// ==================== الأوامر ====================
 
 const commands = [
     new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة'),
@@ -382,7 +378,7 @@ client.on('interactionCreate', async interaction => {
             const row = new ActionRowBuilder().addComponents(joinButton);
             
             const msg = await interaction.reply({ 
-                embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle('روليت').setDescription('اضغط للانضمام خلال 15 ثانية!')], 
+                embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle('لعبة الروليت').setDescription('اضغط الزر أدناه للانضمام خلال 15 ثانية!')], 
                 components: [row], 
                 fetchReply: true 
             });
@@ -391,9 +387,9 @@ client.on('interactionCreate', async interaction => {
             collector.on('collect', async i => {
                 if (!participants.has(i.user.id)) {
                     participants.add(i.user.id);
-                    await i.reply({ content: 'انضممت بنجاح!', ephemeral: true });
+                    await i.reply({ content: 'تم انضمامك بنجاح إلى العجلة.', ephemeral: true });
                 } else {
-                    await i.reply({ content: 'منضم مسبقاً!', ephemeral: true });
+                    await i.reply({ content: 'أنت منضم مسبقاً!', ephemeral: true });
                 }
             });
 
@@ -402,34 +398,49 @@ client.on('interactionCreate', async interaction => {
                 if (players.length === 0) return interaction.editReply({ content: 'انتهى الوقت بدون مشاركين.', embeds: [], components: [] });
                 if (players.length === 1) {
                     userPoints.set(players[0], (userPoints.get(players[0]) || 0) + customPoints);
-                    return interaction.editReply({ content: `فاز <@${players[0]}> تلقائياً بـ ${customPoints} نقطة!`, embeds: [], components: [] });
+                    return interaction.editReply({ content: `فاز اللاعب <@${players[0]}> تلقائياً بـ ${customPoints} نقطة لعدم وجود منافسين!`, embeds: [], components: [] });
                 }
 
-                await interaction.editReply({ content: `بدأ الروليت!`, embeds: [], components: [] });
+                await interaction.editReply({ content: `تم الانتهاء من تسجيل المشاركين، ستبدأ جولات العجلة خلال ثوانٍ...`, embeds: [], components: [] });
 
                 const runRouletteRound = async () => {
                     if (players.length <= 1) {
                         userPoints.set(players[0], (userPoints.get(players[0]) || 0) + customPoints);
-                        return interaction.followUp({ content: `الفائز بالروليت هو <@${players[0]}>!` });
+                        return interaction.followUp({ content: `انتهت لعبة الروليت! الفائز الأخير هو <@${players[0]}> وحصل على ${customPoints} نقطة!` });
                     }
 
+                    // اختيار اللاعب الذي سيقف عليه السهم عشوائياً
                     const luckyPlayerId = players[Math.floor(Math.random() * players.length)];
-                    const targetOptions = players.filter(id => id !== luckyPlayerId).map(id => ({ label: `طرد اللاعب`, value: id }));
-                    const selectMenu = new StringSelectMenuBuilder().setCustomId(`kick_${luckyPlayerId}`).setPlaceholder('اختر شخصاً لطرده!').addOptions(targetOptions);
                     
-                    const turnMsg = await interaction.followUp({ content: `الدور على <@${luckyPlayerId}> لاختيار ضحية!`, components: [new ActionRowBuilder().addComponents(selectMenu)] });
+                    // بناء قائمة الأقسام (تمثيل العجلة بشكل نصي منظم وواضح تماماً مثل صورتك)
+                    let wheelView = '╭───────────────╮\n';
+                    players.forEach(id => {
+                        const pointer = (id === luckyPlayerId) ? ' ◄ السهم هنا' : '';
+                        wheelView += `│ <@${id}>${pointer}\n`;
+                    });
+                    wheelView += '╰───────────────╯';
+
+                    const targetOptions = players.filter(id => id !== luckyPlayerId).map(id => ({ label: `طرد اللاعب`, value: id }));
+                    const selectMenu = new StringSelectMenuBuilder().setCustomId(`kick_${luckyPlayerId}`).setPlaceholder('اختر لاعباً لطرده من العجلة').addOptions(targetOptions);
+                    
+                    const embed = new EmbedBuilder()
+                        .setColor(0x0099FF)
+                        .setTitle('عجلة الروليت')
+                        .setDescription(`**اللاعب الذي وقع عليه الاختيار:** <@${luckyPlayerId}>\n\n${wheelView}\n\n**لديك 15 ثانية لاختيار لاعب لطرده:**`);
+
+                    const turnMsg = await interaction.followUp({ embeds: [embed], components: [new ActionRowBuilder().addComponents(selectMenu)] });
                     
                     const choiceCollector = turnMsg.createMessageComponentCollector({ filter: i => i.user.id === luckyPlayerId, time: 15000, max: 1 });
                     choiceCollector.on('collect', async i => {
                         const kickedId = i.values[0];
                         players = players.filter(id => id !== kickedId);
-                        await i.update({ content: `تم طرد <@${kickedId}>!`, components: [] });
+                        await i.update({ content: `تم طرد اللاعب <@${kickedId}> بنجاح من العجلة.`, embeds: [], components: [] });
                     });
                     choiceCollector.on('end', async collected => {
                         if (collected.size === 0 && players.length > 1) {
                             const kickedId = players.find(id => id !== luckyPlayerId);
                             players = players.filter(id => id !== kickedId);
-                            await turnMsg.edit({ content: `انتهى الوقت وتم طرد <@${kickedId}> تلقائياً!`, components: [] });
+                            await turnMsg.edit({ content: `انتهى الوقت ولم يقم اللاعب بالخيار، تم طرد <@${kickedId}> تلقائياً.`, embeds: [], components: [] });
                         }
                         setTimeout(runRouletteRound, 2000);
                     });
