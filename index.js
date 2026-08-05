@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { MongoClient } = require('mongodb');
 const express = require('express');
 
@@ -84,7 +84,6 @@ async function resetAllPointsDB() {
 }
 
 let activeGame = null;
-let rouletteData = null;
 
 const allFlagsList = [
     { name: 'السعودية', code: 'sa' }, { name: 'الإمارات', code: 'ae' }, { name: 'الكويت', code: 'kw' },
@@ -163,80 +162,6 @@ function isStaff(member) {
     return hasAdmin || hasCustomRole;
 }
 
-// ----------------- دالة تشغيل الروليت البسيطة السريعة -----------------
-function getRouletteButtons() {
-    return new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('rl_join').setLabel('دخول').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('rl_leave').setLabel('خروج').setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId('rl_start').setLabel('ابدأ اللعبة').setStyle(ButtonStyle.Primary)
-    );
-}
-
-async function startRouletteLobby(channel, points) {
-    rouletteData = {
-        status: 'lobby',
-        points: points,
-        players: []
-    };
-
-    const embed = new EmbedBuilder()
-        .setColor(0x5865F2)
-        .setTitle('🎲 لعبة الروليت')
-        .setDescription(`اضغط على **دخول** للمشاركة في اللعبة!\n\n**الجائزة:** ${points} نقطة\n**المشاركين الحاليين:** 0`);
-
-    await channel.send({ embeds: [embed], components: [getRouletteButtons()] });
-}
-
-async function runRouletteRound(channel) {
-    if (!rouletteData || rouletteData.players.length === 0) {
-        await channel.send('انتهت اللعبة، لا يوجد مشاركين!');
-        rouletteData = null;
-        activeGame = null;
-        return;
-    }
-
-    if (rouletteData.players.length === 1) {
-        const winnerId = rouletteData.players[0];
-        const currentPoints = userPoints.get(winnerId) || 0;
-        await savePointsToDB(winnerId, currentPoints + rouletteData.points);
-
-        const winEmbed = new EmbedBuilder()
-            .setColor(0xFEE75C)
-            .setTitle('🏆 الفائز في الروليت!')
-            .setDescription(`مبروك <@${winnerId}> فزت بـ **${rouletteData.points}** نقطة!`);
-
-        await channel.send({ embeds: [winEmbed] });
-        rouletteData = null;
-        activeGame = null;
-        return;
-    }
-
-    const elimIndex = Math.floor(Math.random() * rouletteData.players.length);
-    const eliminatedId = rouletteData.players[elimIndex];
-
-    const spinEmbed = new EmbedBuilder()
-        .setColor(0xED4245)
-        .setTitle('🌀 جاري تدوير العجلة...')
-        .setDescription(`تجري القرعة الآن بين **${rouletteData.players.length}** مشاركين...`);
-
-    const msg = await channel.send({ embeds: [spinEmbed] });
-
-    setTimeout(async () => {
-        rouletteData.players.splice(elimIndex, 1);
-
-        const resEmbed = new EmbedBuilder()
-            .setColor(0xE91E63)
-            .setTitle('❌ خروج لاعب!')
-            .setDescription(`تم استبعاد: <@${eliminatedId}>\n\nالمتبقين (**${rouletteData.players.length}**):\n` + rouletteData.players.map(p => `<@${p}>`).join('\n'));
-
-        await msg.edit({ embeds: [resEmbed] });
-
-        setTimeout(() => {
-            runRouletteRound(channel);
-        }, 3000);
-    }, 3000);
-}
-
 const commands = [
     new SlashCommandBuilder().setName('help').setDescription('عرض قائمة المساعدة'),
     new SlashCommandBuilder().setName('games').setDescription('عرض الألعاب المتوفرة'),
@@ -251,8 +176,7 @@ const commands = [
                     { name: 'سرعة', value: 'سرعة' },
                     { name: 'فك', value: 'فك' },
                     { name: 'أدمج', value: 'أدمج' },
-                    { name: 'أعلام', value: 'أعلام' },
-                    { name: 'روليت', value: 'روليت' }
+                    { name: 'أعلام', value: 'أعلام' }
                 )
         )
         .addIntegerOption(option =>
@@ -387,7 +311,6 @@ client.on('messageCreate', async message => {
             if (activeGame.timer) clearTimeout(activeGame.timer);
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
         }
-        rouletteData = null;
         activeGame = null;
         return message.reply('تم إيقاف اللعبة.');
     }
@@ -405,7 +328,7 @@ client.on('messageCreate', async message => {
         return message.reply({ embeds: [topEmbed] });
     }
 
-    if (activeGame && activeGame.type !== 'روليت') {
+    if (activeGame) {
         if (activeGame.isProcessing) return;
 
         let userAns = message.content.trim().replace(/\s+/g, '').replace(/أ|إ|آ/g, 'ا');
@@ -438,49 +361,6 @@ client.on('messageCreate', async message => {
 });
 
 client.on('interactionCreate', async interaction => {
-    if (interaction.isButton()) {
-        if (!rouletteData) return interaction.reply({ content: 'لا توجد لعبة روليت قائمة!', ephemeral: true });
-
-        const userId = interaction.user.id;
-
-        if (interaction.customId === 'rl_join') {
-            if (rouletteData.status !== 'lobby') return interaction.reply({ content: 'اللعبة بدأت بالفعل!', ephemeral: true });
-            if (rouletteData.players.includes(userId)) return interaction.reply({ content: 'أنت انضممت بالفعل!', ephemeral: true });
-
-            rouletteData.players.push(userId);
-
-            const updatedEmbed = new EmbedBuilder()
-                .setColor(0x5865F2)
-                .setTitle('🎲 لعبة الروليت')
-                .setDescription(`اضغط على **دخول** للمشاركة في اللعبة!\n\n**الجائزة:** ${rouletteData.points} نقطة\n**المشاركين الحاليين:** ${rouletteData.players.length}\n\n` + rouletteData.players.map(p => `<@${p}>`).join('\n'));
-
-            await interaction.update({ embeds: [updatedEmbed] });
-        }
-        else if (interaction.customId === 'rl_leave') {
-            if (rouletteData.status !== 'lobby') return interaction.reply({ content: 'اللعبة بدأت بالفعل!', ephemeral: true });
-            const pIdx = rouletteData.players.indexOf(userId);
-            if (pIdx === -1) return interaction.reply({ content: 'أنت لست مسجلاً!', ephemeral: true });
-
-            rouletteData.players.splice(pIdx, 1);
-
-            const updatedEmbed = new EmbedBuilder()
-                .setColor(0x5865F2)
-                .setTitle('🎲 لعبة الروليت')
-                .setDescription(`اضغط على **دخول** للمشاركة في اللعبة!\n\n**الجائزة:** ${rouletteData.points} نقطة\n**المشاركين الحاليين:** ${rouletteData.players.length}\n\n` + (rouletteData.players.length > 0 ? rouletteData.players.map(p => `<@${p}>`).join('\n') : 'لا يوجد مشاركين.'));
-
-            await interaction.update({ embeds: [updatedEmbed] });
-        }
-        else if (interaction.customId === 'rl_start') {
-            if (!isStaff(interaction.member)) return interaction.reply({ content: 'للمشرفين فقط!', ephemeral: true });
-            if (rouletteData.players.length < 2) return interaction.reply({ content: 'يلزم مشاركين اثنين على الأقل!', ephemeral: true });
-
-            rouletteData.status = 'playing';
-            await interaction.reply({ content: '🚀 تم بدء لعبة الروليت!' });
-            runRouletteRound(interaction.channel);
-        }
-        return;
-    }
-
     if (!interaction.isChatInputCommand()) return;
     const { commandName } = interaction;
 
@@ -490,7 +370,7 @@ client.on('interactionCreate', async interaction => {
             .setColor(0x0099FF)
             .setDescription(
                 '**🎮 أوامر الألعاب:**\n' +
-                '`/play` - لبدء لعبة جديدة (سرعة، فك، أدمج، أعلام، روليت)\n' +
+                '`/play` - لبدء لعبة جديدة (سرعة، فك، أدمج، أعلام)\n' +
                 '`/stop` - لإيقاف اللعبة الحالية\n' +
                 '`/games` - لعرض الألعاب المتوفرة\n\n' +
                 '**🏆 أوامر النقاط:**\n' +
@@ -505,7 +385,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ embeds: [helpEmbed] });
     } 
     else if (commandName === 'games') {
-        await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\` | \`روليت\``);
+        await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\``);
     } 
     else if (commandName === 'setrole') {
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'للأدمن فقط', ephemeral: true });
@@ -536,11 +416,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply('جاري بدء لعبة الأعلام...');
             await sendNextFlag(interaction.channel);
         }
-        else if (gameType === 'روليت') {
-            activeGame = { type: 'روليت' };
-            await interaction.reply('جاري إنشاء غرفة الانتظار للروليت...');
-            await startRouletteLobby(interaction.channel, customPoints);
-        }
     }
     else if (commandName === 'stop') {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
@@ -548,7 +423,6 @@ client.on('interactionCreate', async interaction => {
             if (activeGame.timer) clearTimeout(activeGame.timer);
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
         }
-        rouletteData = null;
         activeGame = null;
         await interaction.reply('تم إيقاف اللعبة.');
     }
@@ -578,3 +452,5 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(TOKEN);
+
+
