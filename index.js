@@ -236,8 +236,8 @@ function getGamePayload(gameType) {
         }
     } else if (gameType === 'فك') {
         const w = getUniqueWord();
-        answerText = makeSpaced(w);
-        displayText = `# ${answerText}`;
+        answerText = w; // الإجابة هي الكلمة الأصلية متصلة
+        displayText = `# ${makeSpaced(w)}`; // العرض يكون حروف مفككة مسافات
     } else if (gameType === 'أدمج') {
         const w = getUniqueWord();
         answerText = w; 
@@ -264,7 +264,7 @@ function setGameTimeout(channel) {
             activeGame.isProcessing = false;
             activeGame.answer = payload.answerText;
             setGameTimeout(channel);
-            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب:\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
+            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب الكلمة متصلة:\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
             return channel.send({ embeds: [embed] });
         }
     }, 30000);
@@ -351,7 +351,7 @@ client.on('messageCreate', async message => {
                 activeGame.answer = payload.answerText;
                 activeGame.isProcessing = false;
                 setGameTimeout(message.channel);
-                const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب:\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
+                const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب الكلمة متصلة:\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
                 return message.channel.send({ embeds: [embed] });
             } else if (activeGame.type === 'أعلام') {
                 return sendNextFlag(message.channel);
@@ -408,7 +408,7 @@ client.on('interactionCreate', async interaction => {
             const payload = getGamePayload(gameType);
             activeGame = { type: gameType, answer: payload.answerText, points: customPoints, missedCount: 0, isProcessing: false };
             setGameTimeout(interaction.channel);
-            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(gameType).setDescription(`أسرع شخص:\n\n${payload.displayText}\n\n*(النقاط: ${customPoints})*`);
+            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(gameType).setDescription(`أسرع شخص يكتب الكلمة متصلة:\n\n${payload.displayText}\n\n*(النقاط: ${customPoints})*`);
             await interaction.reply({ embeds: [embed] });
         }
         else if (gameType === 'أعلام') {
@@ -452,5 +452,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(TOKEN);
-
-
