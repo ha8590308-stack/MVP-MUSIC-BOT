@@ -289,8 +289,8 @@ async function verifyCategoryAnswer(category, letter, userWord) {
             contents: [prompt],
         });
 
-        const text = response.text ? response.text.trim() : '';
-        return text.includes('نعم');
+        const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
+        return text.trim().includes('نعم');
     } catch (e) {
         console.error("AI Check Error:", e);
         return false;
