@@ -1,5 +1,6 @@
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { MongoClient } = require('mongodb');
+const { GoogleGenAI } = require('@google/genai');
 const express = require('express');
 
 const app = express();
@@ -14,6 +15,8 @@ const client = new Client({
         GatewayIntentBits.MessageContent
     ]
 });
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const uri = process.env.MONGO_URI; 
 const dbClient = new MongoClient(uri);
@@ -39,7 +42,7 @@ async function connectDB() {
             allowedRoleId = settings.allowedRoleId || null;
         }
     } catch (e) {
-        console.error('خطأ في الاتصال بقاعدة البيانات (تأكد من الـ MONGO_URI و Network Access):', e.message);
+        console.error('خطأ في الاتصال بقاعدة البيانات:', e.message);
     }
 }
 connectDB();
@@ -110,43 +113,10 @@ const allFlagsList = [
 
 const hugeWordsList = [
     'برمجة', 'ديسكورد', 'سيرفر', 'كمبيوتر', 'ماوس', 'شاشة', 'تحديث', 'كود', 'جيمنق', 'بطولة', 
-    'فوز', 'لعبة', 'حاسب', 'شبكة', 'تطبيق', 'مطور', 'قناة', 'رومات', 'تفاعل', 'شات', 
-    'سماعة', 'لوحة', 'مفاتيح', 'صوت', 'تحكم', 'مشرف', 'عضو', 'مسابقة', 'تقنية', 'هاتف', 
-    'متصفح', 'تخزين', 'معالج', 'بطاقة', 'رسومات', 'تنزيل', 'اتصال', 'حماية', 'منتصر', 'محترف', 
-    'تطبيقات', 'ديوانية', 'سعودية', 'رياضيات', 'فيزياء', 'تاريخ', 'مستقبل', 'فضاء', 'عالم', 'خوارزمية',
-    'استضافة', 'متجر', 'تصميم', 'برمجيات', 'فريق', 'منافسة', 'ترتيب', 'صدارة', 'نقاط', 'مستوى',
-    'تطوير', 'تأمين', 'اختراق', 'ثغرة', 'دفاع', 'هجوم', 'استراتيجية', 'خطة', 'نجاح', 'إنجاز',
-    'مفتاح', 'نافذة', 'قائمة', 'خيارات', 'تفعيل', 'إيقاف', 'تشغيل', 'تغيير', 'حفظ', 'بحث',
-    'استعلام', 'قاعدة', 'بيانات', 'ملف', 'مجلد', 'موقع', 'إنترنت', 'سرعة', 'أداء', 'استجابة',
-    'جاوا', 'بايثون', 'ريأكت', 'جافاسكريبت', 'نود', 'تليجرام', 'يوتيوب', 'تويتر', 'تيكتوك', 'انستغرام',
-    'سحابية', 'مرن', 'سريع', 'ذكي', 'اصطناعي', 'توجيه', 'تنسيق', 'ترجمة', 'تواصل', 'محادثة',
-    'مشاهدة', 'استماع', 'أغنية', 'نغمة', 'صوتيات', 'مرئيات', 'بث', 'مباشر', 'تسجيل', 'دخول',
-    'خروج', 'حساب', 'كلمة', 'مرور', 'تحقق', 'بصمة', 'صلاحية', 'مشرف', 'مدير', 'منسق', 
-    'مساعد', 'رئيسي', 'فرعي', 'عام', 'خاص', 'مجموعة', 'فردي', 'جماعي', 'شارك', 'تفاعل', 
-    'ارسل', 'استقبل', 'نسخ', 'لصق', 'حذف', 'تعديل', 'إضافة', 'تأكيد', 'رجوع', 'تقدم', 
-    'استمرار', 'توقف', 'انتظار', 'جاهز', 'انطلق', 'ابدأ', 'انتهي', 'سؤال', 'جواب', 'حل', 
-    'مشكلة', 'خطأ', 'صواب', 'دقيق', 'ممتاز', 'جيد', 'سيء', 'ضعيف', 'قوي', 'شجاعة',
-    'مكتبة', 'طاولة', 'كرسي', 'نافذة', 'باب', 'غرفة', 'منزل', 'شارع', 'مدينة', 'دولة',
-    'عاصمة', 'جبل', 'نهر', 'بحر', 'محيط', 'سماء', 'قمر', 'شمس', 'نجوم', 'سحاب',
-    'مطَر', 'رعد', 'برق', 'رياح', 'عاصفة', 'صحراء', 'واحة', 'شجرة', 'وردة', 'زهرة',
-    'طير', 'أسد', 'نمر', 'فهد', 'ذئب', 'صقر', 'نسر', 'حمام', 'قطة', 'كلب',
-    'حصان', 'جمل', 'خروف', 'بقرة', 'ثور', 'فيل', 'زرافة', 'قرد', 'دب', 'ثعلب',
-    'سيارة', 'طائرة', 'قطار', 'سفينة', 'قارب', 'دراجة', 'صاروخ', 'ممر', 'جسر', 'طريق',
-    'حقيبة', 'محفظة', 'قلم', 'دفتر', 'كتاب', 'رسم', 'لوحة', 'فرشاة', 'لون', 'أحمر',
-    'أزرق', 'أخضر', 'أصفر', 'أسود', 'أبيض', 'رمادي', 'بنفسجي', 'برتقالي', 'وردي', 'ذهبي',
-    'فضي', 'حديد', 'نحاس', 'ذهب', 'فضة', 'ألماس', 'ياقوت', 'زبرجد', 'خشب', 'صخر',
-    'تراب', 'ماء', 'هواء', 'نار', 'طاقة', 'حرارة', 'برودة', 'ثلوج', 'جليد', 'بخار',
-    'طبيب', 'مهندس', 'معلم', 'طالب', 'مدير', 'شرطي', 'جندي', 'قائد', 'سائق', 'فنان',
-    'كاتب', 'شاعر', 'لاعب', 'حارس', 'مدرب', 'تاجر', 'صانع', 'نجار', 'حداد', 'خياط',
-    'ساعة', 'دقيقة', 'ثانية', 'يوم', 'أسبوع', 'شهر', 'سنة', 'قرن', 'صباح', 'مساء',
-    'ليل', 'نهار', 'فجر', 'ظهر', 'عصر', 'مغرب', 'عشاء', 'صيف', 'شتاء', 'ربيع',
-    'خريف', 'فصل', 'مناخ', 'طقس', 'طعام', 'شراب', 'خبز', 'لحم', 'دجاج', 'سمك',
-    'أرز', 'سكر', 'ملح', 'زيت', 'ماء', 'شاي', 'قهوة', 'حليب', 'عصير', 'تفاح',
-    'موز', 'برتقال', 'عنب', 'توت', 'رمان', 'بطيخ', 'مشمش', 'خوخ', 'طماطم', 'خيار',
-    'خس', 'جزر', 'بطاطس', 'بصل', 'ثوم', 'ليمون', 'فراولة', 'مانجو', 'اناناس'
+    'فوز', 'لعبة', 'حاسب', 'شبكة', 'تطبيق', 'مطور', 'قناة', 'رومات', 'تفاعل', 'شات'
 ];
 
-const arabicLetters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'هـ', 'و', 'ي'];
+const arabicLetters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'ن', 'هـ', 'و', 'ي'];
 const categoriesList = ['حيوان', 'جماد', 'بلاد', 'نبات', 'طير'];
 
 let availableWords = [];
@@ -247,66 +217,31 @@ function getGamePayload(gameType) {
     let answerText, displayText, instructions;
     if (gameType === 'سرعة') {
         instructions = 'أسرع شخص يكتب:';
-        const isTwoWords = Math.random() < 0.5;
-        if (isTwoWords) {
-            const w1 = getUniqueWord();
-            const w2 = getUniqueWord();
-            answerText = `${w1} ${w2}`;
-            displayText = `# ${w1} ${w2}`;
-        } else {
-            const w = getUniqueWord();
-            answerText = w;
-            displayText = `# ${w}`;
-        }
+        const w = getUniqueWord();
+        answerText = w;
+        displayText = `# ${w}`;
     } else if (gameType === 'فك') {
-        instructions = 'أسرع شخص يفكك الكلمة (يحط مسافة بين كل حرف):';
+        instructions = 'أسرع شخص يفكك الكلمة:';
         const w = getUniqueWord();
         answerText = makeSpaced(w); 
         displayText = `# ${w}`; 
     } else if (gameType === 'أدمج') {
-        instructions = 'أسرع شخص يدمج الحروف ويكتب الكلمة:';
+        instructions = 'أسرع شخص يدمج الحروف:';
         const w = getUniqueWord();
         answerText = w; 
         displayText = `# ${makeSpaced(w)}`; 
     } else if (gameType === 'رياضيات') {
-        instructions = 'أسرع شخص يحل المسألة الرياضية التالية:';
-        const ops = ['+', '-', '*', '/'];
-        const chosenOp = ops[Math.floor(Math.random() * ops.length)];
-        let num1, num2, result;
-
-        if (chosenOp === '+') {
-            num1 = Math.floor(Math.random() * 90) + 10;
-            num2 = Math.floor(Math.random() * 90) + 10;
-            result = num1 + num2;
-        } else if (chosenOp === '-') {
-            num1 = Math.floor(Math.random() * 90) + 10;
-            num2 = Math.floor(Math.random() * 90) + 10;
-            if (num1 < num2) [num1, num2] = [num2, num1];
-            result = num1 - num2;
-        } else if (chosenOp === '*') {
-            num1 = Math.floor(Math.random() * 12) + 2;
-            num2 = Math.floor(Math.random() * 12) + 2;
-            result = num1 * num2;
-        } else if (chosenOp === '/') {
-            num2 = Math.floor(Math.random() * 10) + 2;
-            const multiplier = Math.floor(Math.random() * 10) + 2;
-            num1 = num2 * multiplier;
-            result = num1 / num2;
-        }
-
-        answerText = result.toString();
-        let opSymbol = chosenOp;
-        if (chosenOp === '*') opSymbol = '×';
-        if (chosenOp === '/') opSymbol = '÷';
-        
-        displayText = `# ${num1} ${opSymbol} ${num2} = ?`;
+        instructions = 'أسرع شخص يحل المسألة:';
+        const num1 = Math.floor(Math.random() * 50) + 10;
+        const num2 = Math.floor(Math.random() * 50) + 10;
+        answerText = (num1 + num2).toString();
+        displayText = `# ${num1} + ${num2} = ?`;
     } else if (gameType === 'حروف') {
-        instructions = 'أسرع شخص يكتب الكلمة المطلوبة حسب التصنيف والحرف:';
+        instructions = 'أسرع شخص يكتب الكلمة الصحيحة حسب التصنيف والحرف المطلوب:';
         const randomCategory = categoriesList[Math.floor(Math.random() * categoriesList.length)];
         const randomLetter = arabicLetters[Math.floor(Math.random() * arabicLetters.length)];
         
-        // نخزن الحرف المستهدف في answerText للتحقق منه لاحقاً
-        answerText = randomLetter; 
+        answerText = { category: randomCategory, letter: randomLetter };
         displayText = `# التصنيف: **${randomCategory}** | الحرف: **[ ${randomLetter} ]**`;
     }
     return { answerText, displayText, instructions };
@@ -321,11 +256,10 @@ function setGameTimeout(channel) {
         activeGame.missedCount = (activeGame.missedCount || 0) + 1;
 
         if (activeGame.missedCount >= 2) {
-            await channel.send(`انتهى الوقت! لم يتفاعل أحد مرتين متتاليتين، تم إيقاف اللعبة.`);
+            await channel.send(`انتهى الوقت! تم إيقاف اللعبة لعدم التفاعل.`);
             activeGame = null;
         } else {
-            await channel.send(`انتهى الوقت! لم يقدم أحد الإجابة، جاري إرسال سؤال آخر...`);
-            
+            await channel.send(`انتهى الوقت! جاري إرسال سؤال آخر...`);
             const payload = getGamePayload(activeGame.type);
             activeGame.isProcessing = false;
             activeGame.answer = payload.answerText;
@@ -336,36 +270,31 @@ function setGameTimeout(channel) {
     }, 30000);
 }
 
-async function sendNextFlag(channel) {
-    if (!activeGame || activeGame.type !== 'أعلام') return;
-    if (activeGame.timer) clearTimeout(activeGame.timer);
+async function verifyCategoryAnswer(category, letter, userWord) {
+    try {
+        const prompt = `أنت مدقق لغوي وحكم لعبة حريم/تراثية (بلاد، حيوان، نبات، جماد، طير).
+التصنيف المطلوب: "${category}"
+الحرف المطلوب بدايتها: "${letter}"
+إجابة اللاعب: "${userWord}"
 
-    const randomFlag = getUniqueFlag();
-    activeGame.answer = randomFlag.name;
-    activeGame.isProcessing = false;
+شروط الصحة:
+1. هل الكلمة تنتمي حقيقة للتصنيف "${category}"؟
+2. هل تبدأ الكلمة بالحرف "${letter}" (تجاهل اختلافات الهمزات مثل أ إ آ، وتجاهل أل التعريف)؟
+3. هل الكلمة محترمة وليست كلمة بذيئة أو هابطة أو استهبال؟
 
-    const flagEmbed = new EmbedBuilder()
-        .setColor(0xED4245)
-        .setTitle('لعبة الأعلام')
-        .setDescription('**أسرع شخص يخمن اسم العلم الموجود بالأسفل!**')
-        .setImage(`https://flagcdn.com/w640/${randomFlag.code}.png`);
+أجب بكلمة واحدة فقط: "نعم" إذا كانت صحيحة تماماً ومحترمة، أو "لا" إذا كانت خاطئة أو بذيئة أو استهبال.`;
 
-    const sentMessage = await channel.send({ embeds: [flagEmbed] });
-    activeGame.messageId = sentMessage.id;
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
 
-    activeGame.timer = setTimeout(async () => {
-        if (!activeGame || activeGame.type !== 'أعلام' || activeGame.isProcessing) return;
-        activeGame.isProcessing = true;
-        activeGame.missedCount = (activeGame.missedCount || 0) + 1;
-
-        if (activeGame.missedCount >= 2) {
-            await channel.send(`انتهى الوقت! الإجابة كانت: **${randomFlag.name}**\nتم إيقاف اللعبة.`);
-            activeGame = null;
-        } else {
-            await channel.send(`انتهى الوقت! الإجابة كانت: **${randomFlag.name}**\nجاري إرسال علم جديد...`);
-            sendNextFlag(channel);
-        }
-    }, 30000);
+        const text = response.text.trim();
+        return text.includes('نعم');
+    } catch (e) {
+        console.error("AI Check Error:", e);
+        return false;
+    }
 }
 
 client.on('messageCreate', async message => {
@@ -383,13 +312,11 @@ client.on('messageCreate', async message => {
 
     if (message.content === 'توب') {
         if (userPoints.size === 0) return message.reply('لا توجد نقاط مسجلة حالياً!');
-
         const sortedUsers = Array.from(userPoints.entries()).sort((a, b) => b[1] - a[1]);
         let description = '';
         sortedUsers.forEach(([userId, points], index) => {
             description += `#${index + 1} | <@${userId}> ── **${points}** نقطة\n`;
         });
-
         const topEmbed = new EmbedBuilder().setColor(0xFEE75C).setTitle('قائمة صدارة الترتيب').setDescription(description).setTimestamp();
         return message.reply({ embeds: [topEmbed] });
     }
@@ -397,19 +324,22 @@ client.on('messageCreate', async message => {
     if (activeGame) {
         if (activeGame.isProcessing) return;
 
-        let userAns = message.content.trim().replace(/أ|إ|آ/g, 'ا');
-        let correctAns = activeGame.answer.trim().replace(/أ|إ|آ/g, 'ا');
-
         let isCorrect = false;
+        let userAns = message.content.trim();
 
         if (activeGame.type === 'حروف') {
-            // التحقق أن الحرف الأول من إجابة اللاعب يطابق الحرف المطلوب
-            const firstLetter = userAns.charAt(0).replace(/أ|إ|آ/g, 'ا');
-            const targetLetter = correctAns.charAt(0).replace(/أ|إ|آ/g, 'ا');
-            if (firstLetter === targetLetter && userAns.length >= 2) {
+            activeGame.isProcessing = true;
+            const isValidByAI = await verifyCategoryAnswer(activeGame.answer.category, activeGame.answer.letter, userAns);
+            if (isValidByAI) {
                 isCorrect = true;
+            } else {
+                activeGame.isProcessing = false;
+                return; 
             }
         } else {
+            let correctAns = activeGame.answer.trim().replace(/أ|إ|آ/g, 'ا');
+            userAns = userAns.replace(/أ|إ|آ/g, 'ا');
+
             if (activeGame.type === 'فك') {
                 userAns = userAns.replace(/\s+/g, ' '); 
                 correctAns = correctAns.replace(/\s+/g, ' ');
@@ -434,16 +364,12 @@ client.on('messageCreate', async message => {
 
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
             
-            if (['سرعة', 'فك', 'أدمج', 'رياضيات', 'حروف'].includes(activeGame.type)) {
-                const payload = getGamePayload(activeGame.type);
-                activeGame.answer = payload.answerText;
-                activeGame.isProcessing = false;
-                setGameTimeout(message.channel);
-                const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`${payload.instructions}\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
-                return message.channel.send({ embeds: [embed] });
-            } else if (activeGame.type === 'أعلام') {
-                return sendNextFlag(message.channel);
-            }
+            const payload = getGamePayload(activeGame.type);
+            activeGame.answer = payload.answerText;
+            activeGame.isProcessing = false;
+            setGameTimeout(message.channel);
+            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`${payload.instructions}\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
+            return message.channel.send({ embeds: [embed] });
         }
     }
 });
@@ -456,20 +382,7 @@ client.on('interactionCreate', async interaction => {
         const helpEmbed = new EmbedBuilder()
             .setTitle('قائمة الأوامر الشاملة')
             .setColor(0x0099FF)
-            .setDescription(
-                '**🎮 أوامر الألعاب:**\n' +
-                '`/play` - لبدء لعبة جديدة (سرعة، فك، أدمج، أعلام، رياضيات، حروف)\n' +
-                '`/stop` - لإيقاف اللعبة الحالية\n' +
-                '`/games` - لعرض الألعاب المتوفرة\n\n' +
-                '**🏆 أوامر النقاط:**\n' +
-                '`/points` - لعرض نقاطك أو نقاط عضو معين\n' +
-                '`/addpoints` - لإضافة نقاط لعضو معين (للإشراف)\n' +
-                '`/resetpoints` - لتصفير نقاط عضو محدد (للإشراف)\n' +
-                '`/resetallpoints` - لتصفير نقاط الجميع (للإشراف)\n' +
-                'كلمة `توب` - لعرض صدارة الترتيب في الشات\n\n' +
-                '**⚙️ أوامر الإدارة:**\n' +
-                '`/setrole` - تحديد رول التحكم بالبوت (للأدمن)'
-            );
+            .setDescription('أوامر البوت والمسابقات تعمل بنجاح مع فلتر الذكاء الاصطناعي!');
         await interaction.reply({ embeds: [helpEmbed] });
     } 
     else if (commandName === 'games') {
@@ -479,7 +392,7 @@ client.on('interactionCreate', async interaction => {
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'للأدمن فقط', ephemeral: true });
         allowedRoleId = interaction.options.getRole('role').id;
         await saveSettingsToDB();
-        await interaction.reply(`تم تعيين رول التحكم بنجاح وحفظه بشكل دائم.`);
+        await interaction.reply(`تم تعيين رول التحكم بنجاح.`);
     }
     else if (commandName === 'play') {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'ليس لديك صلاحية.', ephemeral: true });
@@ -492,18 +405,20 @@ client.on('interactionCreate', async interaction => {
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
         }
 
-        if (['سرعة', 'فك', 'أدمج', 'رياضيات', 'حروف'].includes(gameType)) {
-            const payload = getGamePayload(gameType);
-            activeGame = { type: gameType, answer: payload.answerText, points: customPoints, missedCount: 0, isProcessing: false };
-            setGameTimeout(interaction.channel);
-            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(gameType).setDescription(`${payload.instructions}\n\n${payload.displayText}\n\n*(النقاط: ${customPoints})*`);
-            await interaction.reply({ embeds: [embed] });
-        }
-        else if (gameType === 'أعلام') {
-            activeGame = { type: 'أعلام', points: customPoints, missedCount: 0, isProcessing: false };
+        const payload = getGamePayload(gameType);
+        activeGame = { type: gameType, answer: payload.answerText, points: customPoints, missedCount: 0, isProcessing: false };
+        
+        if (gameType === 'أعلام') {
             await interaction.reply('جاري بدء لعبة الأعلام...');
-            await sendNextFlag(interaction.channel);
+            const randomFlag = getUniqueFlag();
+            activeGame.answer = randomFlag.name;
+            const flagEmbed = new EmbedBuilder().setColor(0xED4245).setTitle('لعبة الأعلام').setImage(`https://flagcdn.com/w640/${randomFlag.code}.png`);
+            return interaction.channel.send({ embeds: [flagEmbed] });
         }
+
+        setGameTimeout(interaction.channel);
+        const embed = new EmbedBuilder().setColor(0x57F287).setTitle(gameType).setDescription(`${payload.instructions}\n\n${payload.displayText}\n\n*(النقاط: ${customPoints})*`);
+        await interaction.reply({ embeds: [embed] });
     }
     else if (commandName === 'stop') {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
@@ -524,7 +439,7 @@ client.on('interactionCreate', async interaction => {
         const pts = interaction.options.getInteger('points');
         const newTotal = (userPoints.get(target.id) || 0) + pts;
         await savePointsToDB(target.id, newTotal);
-        await interaction.reply(`تمت الإضافة لـ <@${target.id}> وحفظها.`);
+        await interaction.reply(`تمت الإضافة لـ <@${target.id}>.`);
     }
     else if (commandName === 'resetpoints') {
         if (!isStaff(interaction.member)) return interaction.reply({ content: 'للإشراف فقط', ephemeral: true });
