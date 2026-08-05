@@ -19,8 +19,7 @@ const client = new Client({
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const uri = process.env.MONGO_URI; 
-// تم تعديل الاتصال لتجاوز مشكلة الـ SSL في سيرفرات رندر
-const dbClient = new MongoClient(uri, { tls: true, tlsAllowInvalidCertificates: true });
+const dbClient = new MongoClient(uri);
 
 let db, pointsCollection, settingsCollection;
 let userPoints = new Map();
