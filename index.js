@@ -1,5 +1,3 @@
-أهلاً بك! فهمت قصدك تماماً، تكون اللعبة منوعة بحيث في كل جولة يختار البوت تصنيفاً عشوائياً (مثل: جماد، حيوان، بلاد، نبات) مع حرف معين (مثلاً: حرف "ز")، والفائز هو أسرع شخص يكتب إجابة صحيحة تتبع نفس التصنيف وتبدأ بذلك الحرف.
-هذا الكود المحدث ليصبح خيار حروف يدعم التصنيفات العشوائية بالكامل:
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { MongoClient } = require('mongodb');
 const express = require('express');
@@ -542,4 +540,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(TOKEN);
-
