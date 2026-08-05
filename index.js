@@ -221,8 +221,9 @@ client.once('ready', async () => {
 });
 
 function getGamePayload(gameType) {
-    let answerText, displayText;
+    let answerText, displayText, instructions;
     if (gameType === 'سرعة') {
+        instructions = 'أسرع شخص يكتب:';
         const isTwoWords = Math.random() < 0.5;
         if (isTwoWords) {
             const w1 = getUniqueWord();
@@ -235,15 +236,17 @@ function getGamePayload(gameType) {
             displayText = `# ${w}`;
         }
     } else if (gameType === 'فك') {
+        instructions = 'أسرع شخص يفكك الكلمة (يحط مسافة بين كل حرف):';
         const w = getUniqueWord();
-        answerText = w; // الإجابة هي الكلمة الأصلية متصلة
-        displayText = `# ${makeSpaced(w)}`; // العرض يكون حروف مفككة مسافات
+        answerText = makeSpaced(w); // الإجابة مفككة
+        displayText = `# ${w}`; // العرض كلمة متصلة
     } else if (gameType === 'أدمج') {
+        instructions = 'أسرع شخص يدمج الحروف ويكتب الكلمة:';
         const w = getUniqueWord();
-        answerText = w; 
-        displayText = `# ${makeSpaced(w)}`; 
+        answerText = w; // الإجابة متصلة
+        displayText = `# ${makeSpaced(w)}`; // العرض حروف مفككة
     }
-    return { answerText, displayText };
+    return { answerText, displayText, instructions };
 }
 
 function setGameTimeout(channel) {
@@ -264,7 +267,7 @@ function setGameTimeout(channel) {
             activeGame.isProcessing = false;
             activeGame.answer = payload.answerText;
             setGameTimeout(channel);
-            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب الكلمة متصلة:\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
+            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`${payload.instructions}\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
             return channel.send({ embeds: [embed] });
         }
     }, 30000);
@@ -331,8 +334,17 @@ client.on('messageCreate', async message => {
     if (activeGame) {
         if (activeGame.isProcessing) return;
 
-        let userAns = message.content.trim().replace(/\s+/g, '').replace(/أ|إ|آ/g, 'ا');
-        let correctAns = activeGame.answer.trim().replace(/\s+/g, '').replace(/أ|إ|آ/g, 'ا');
+        let userAns = message.content.trim().replace(/أ|إ|آ/g, 'ا');
+        let correctAns = activeGame.answer.trim().replace(/أ|إ|آ/g, 'ا');
+
+        // تعديل مهم: لعبة "فك" لازم فيها مسافات، باقي الألعاب نتجاهل المسافات عشان لو اللاعب غلط
+        if (activeGame.type === 'فك') {
+            userAns = userAns.replace(/\s+/g, ' '); // نخليها مسافة واحدة بين الحروف
+            correctAns = correctAns.replace(/\s+/g, ' ');
+        } else {
+            userAns = userAns.replace(/\s+/g, ''); // نحذف كل المسافات للألعاب الثانية
+            correctAns = correctAns.replace(/\s+/g, '');
+        }
 
         if (userAns === correctAns) {
             activeGame.isProcessing = true;
@@ -351,7 +363,7 @@ client.on('messageCreate', async message => {
                 activeGame.answer = payload.answerText;
                 activeGame.isProcessing = false;
                 setGameTimeout(message.channel);
-                const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`أسرع شخص يكتب الكلمة متصلة:\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
+                const embed = new EmbedBuilder().setColor(0x57F287).setTitle(activeGame.type).setDescription(`${payload.instructions}\n\n${payload.displayText}\n\n*(النقاط: ${activeGame.points})*`);
                 return message.channel.send({ embeds: [embed] });
             } else if (activeGame.type === 'أعلام') {
                 return sendNextFlag(message.channel);
@@ -408,7 +420,7 @@ client.on('interactionCreate', async interaction => {
             const payload = getGamePayload(gameType);
             activeGame = { type: gameType, answer: payload.answerText, points: customPoints, missedCount: 0, isProcessing: false };
             setGameTimeout(interaction.channel);
-            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(gameType).setDescription(`أسرع شخص يكتب الكلمة متصلة:\n\n${payload.displayText}\n\n*(النقاط: ${customPoints})*`);
+            const embed = new EmbedBuilder().setColor(0x57F287).setTitle(gameType).setDescription(`${payload.instructions}\n\n${payload.displayText}\n\n*(النقاط: ${customPoints})*`);
             await interaction.reply({ embeds: [embed] });
         }
         else if (gameType === 'أعلام') {
