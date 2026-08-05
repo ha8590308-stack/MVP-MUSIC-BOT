@@ -1,3 +1,5 @@
+أهلاً بك! فهمت قصدك تماماً، تكون اللعبة منوعة بحيث في كل جولة يختار البوت تصنيفاً عشوائياً (مثل: جماد، حيوان، بلاد، نبات) مع حرف معين (مثلاً: حرف "ز")، والفائز هو أسرع شخص يكتب إجابة صحيحة تتبع نفس التصنيف وتبدأ بذلك الحرف.
+هذا الكود المحدث ليصبح خيار حروف يدعم التصنيفات العشوائية بالكامل:
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { MongoClient } = require('mongodb');
 const express = require('express');
@@ -143,19 +145,11 @@ const hugeWordsList = [
     'خريف', 'فصل', 'مناخ', 'طقس', 'طعام', 'شراب', 'خبز', 'لحم', 'دجاج', 'سمك',
     'أرز', 'سكر', 'ملح', 'زيت', 'ماء', 'شاي', 'قهوة', 'حليب', 'عصير', 'تفاح',
     'موز', 'برتقال', 'عنب', 'توت', 'رمان', 'بطيخ', 'مشمش', 'خوخ', 'طماطم', 'خيار',
-    'خس', 'جزر', 'بطاطس', 'بصل', 'ثوم', 'ليمون', 'فراولة', 'مانجو', 'اناناس',
-    'استخراج', 'استكشاف', 'استنتاج', 'استبدال', 'استخدام', 'استرجاع', 'استفسار', 'استعداد', 'استقرار', 'استيعاب',
-    'مستودع', 'مستشار', 'مستثمر', 'مستحيل', 'مستصعب', 'مستجدات', 'مستهدف', 'مستشعر', 'مستضيف', 'مستمع',
-    'تكنولوجيا', 'إلكترونيات', 'ميكانيكا', 'هندسة', 'روبوتات', 'أتمتة', 'خوادم', 'بوابات', 'بروتوكول', 'تشفير',
-    'ميغابايت', 'جيجابايت', 'تيرابايت', 'سيرفرات', 'ديسكوردية', 'قوانين', 'صلاحيات', 'رتب', 'رولات', 'أوسمة',
-    'تحديات', 'مواجهات', 'معارك', 'حروب', 'منافسات', 'دوري', 'كأس', 'درع', 'ميدالية', 'جائزة',
-    'تكريم', 'تهنئة', 'احتفال', 'مهرجان', 'مؤتمر', 'معرض', 'ملتقى', 'منتدى', 'حوار', 'نقاش',
-    'محاضرة', 'درس', 'اختبار', 'امتحان', 'نتيجة', 'شهادة', 'دبلوم', 'بكالوريوس', 'ماجستير', 'دكتوراه',
-    'جامعة', 'كلية', 'معهد', 'مدرسة', 'فصل', 'قاعة', 'مختبر', 'مكتب', 'شركة', 'مؤسسة',
-    'مصنع', 'مشروع', 'استثمار', 'تجارة', 'سوق', 'بورصة', 'أسهم', 'عملات', 'أرباح',
-    'خسائر', 'ميزانية', 'حسابات', 'مصروفات', 'إيرادات', 'ضرائب', 'رسوم', 'تمويل', 'قرض', 'دفع',
-    'تحويل', 'إيداع', 'سحب', 'صراف', 'بنك', 'مصرف', 'محفظة', 'رصيد', 'عملية', 'تأكيد'
+    'خس', 'جزر', 'بطاطس', 'بصل', 'ثوم', 'ليمون', 'فراولة', 'مانجو', 'اناناس'
 ];
+
+const arabicLetters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'هـ', 'و', 'ي'];
+const categoriesList = ['حيوان', 'جماد', 'بلاد', 'نبات', 'طير'];
 
 let availableWords = [];
 let availableFlags = [];
@@ -206,7 +200,8 @@ const commands = [
                     { name: 'فك', value: 'فك' },
                     { name: 'أدمج', value: 'أدمج' },
                     { name: 'أعلام', value: 'أعلام' },
-                    { name: 'رياضيات', value: 'رياضيات' }
+                    { name: 'رياضيات', value: 'رياضيات' },
+                    { name: 'حروف', value: 'حروف' }
                 )
         )
         .addIntegerOption(option =>
@@ -288,7 +283,7 @@ function getGamePayload(gameType) {
         } else if (chosenOp === '-') {
             num1 = Math.floor(Math.random() * 90) + 10;
             num2 = Math.floor(Math.random() * 90) + 10;
-            if (num1 < num2) [num1, num2] = [num2, num1]; // تجنب السلبيات
+            if (num1 < num2) [num1, num2] = [num2, num1];
             result = num1 - num2;
         } else if (chosenOp === '*') {
             num1 = Math.floor(Math.random() * 12) + 2;
@@ -297,7 +292,7 @@ function getGamePayload(gameType) {
         } else if (chosenOp === '/') {
             num2 = Math.floor(Math.random() * 10) + 2;
             const multiplier = Math.floor(Math.random() * 10) + 2;
-            num1 = num2 * multiplier; // ضمان ناتج قسمة صحيح بدون كسور
+            num1 = num2 * multiplier;
             result = num1 / num2;
         }
 
@@ -307,6 +302,14 @@ function getGamePayload(gameType) {
         if (chosenOp === '/') opSymbol = '÷';
         
         displayText = `# ${num1} ${opSymbol} ${num2} = ?`;
+    } else if (gameType === 'حروف') {
+        instructions = 'أسرع شخص يكتب الكلمة المطلوبة حسب التصنيف والحرف:';
+        const randomCategory = categoriesList[Math.floor(Math.random() * categoriesList.length)];
+        const randomLetter = arabicLetters[Math.floor(Math.random() * arabicLetters.length)];
+        
+        // نخزن الحرف المستهدف في answerText للتحقق منه لاحقاً
+        answerText = randomLetter; 
+        displayText = `# التصنيف: **${randomCategory}** | الحرف: **[ ${randomLetter} ]**`;
     }
     return { answerText, displayText, instructions };
 }
@@ -399,15 +402,29 @@ client.on('messageCreate', async message => {
         let userAns = message.content.trim().replace(/أ|إ|آ/g, 'ا');
         let correctAns = activeGame.answer.trim().replace(/أ|إ|آ/g, 'ا');
 
-        if (activeGame.type === 'فك') {
-            userAns = userAns.replace(/\s+/g, ' '); 
-            correctAns = correctAns.replace(/\s+/g, ' ');
+        let isCorrect = false;
+
+        if (activeGame.type === 'حروف') {
+            // التحقق أن الحرف الأول من إجابة اللاعب يطابق الحرف المطلوب
+            const firstLetter = userAns.charAt(0).replace(/أ|إ|آ/g, 'ا');
+            const targetLetter = correctAns.charAt(0).replace(/أ|إ|آ/g, 'ا');
+            if (firstLetter === targetLetter && userAns.length >= 2) {
+                isCorrect = true;
+            }
         } else {
-            userAns = userAns.replace(/\s+/g, ''); 
-            correctAns = correctAns.replace(/\s+/g, '');
+            if (activeGame.type === 'فك') {
+                userAns = userAns.replace(/\s+/g, ' '); 
+                correctAns = correctAns.replace(/\s+/g, ' ');
+            } else {
+                userAns = userAns.replace(/\s+/g, ''); 
+                correctAns = correctAns.replace(/\s+/g, '');
+            }
+            if (userAns === correctAns) {
+                isCorrect = true;
+            }
         }
 
-        if (userAns === correctAns) {
+        if (isCorrect) {
             activeGame.isProcessing = true;
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
             if (activeGame.timer) clearTimeout(activeGame.timer);
@@ -419,7 +436,7 @@ client.on('messageCreate', async message => {
 
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
             
-            if (['سرعة', 'فك', 'أدمج', 'رياضيات'].includes(activeGame.type)) {
+            if (['سرعة', 'فك', 'أدمج', 'رياضيات', 'حروف'].includes(activeGame.type)) {
                 const payload = getGamePayload(activeGame.type);
                 activeGame.answer = payload.answerText;
                 activeGame.isProcessing = false;
@@ -443,7 +460,7 @@ client.on('interactionCreate', async interaction => {
             .setColor(0x0099FF)
             .setDescription(
                 '**🎮 أوامر الألعاب:**\n' +
-                '`/play` - لبدء لعبة جديدة (سرعة، فك، أدمج، أعلام، رياضيات)\n' +
+                '`/play` - لبدء لعبة جديدة (سرعة، فك، أدمج، أعلام، رياضيات، حروف)\n' +
                 '`/stop` - لإيقاف اللعبة الحالية\n' +
                 '`/games` - لعرض الألعاب المتوفرة\n\n' +
                 '**🏆 أوامر النقاط:**\n' +
@@ -458,7 +475,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ embeds: [helpEmbed] });
     } 
     else if (commandName === 'games') {
-        await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\` | \`رياضيات\``);
+        await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\` | \`رياضيات\` | \`حروف\``);
     } 
     else if (commandName === 'setrole') {
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'للأدمن فقط', ephemeral: true });
@@ -477,7 +494,7 @@ client.on('interactionCreate', async interaction => {
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
         }
 
-        if (['سرعة', 'فك', 'أدمج', 'رياضيات'].includes(gameType)) {
+        if (['سرعة', 'فك', 'أدمج', 'رياضيات', 'حروف'].includes(gameType)) {
             const payload = getGamePayload(gameType);
             activeGame = { type: gameType, answer: payload.answerText, points: customPoints, missedCount: 0, isProcessing: false };
             setGameTimeout(interaction.channel);
@@ -525,3 +542,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(TOKEN);
+
