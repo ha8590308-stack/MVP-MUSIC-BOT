@@ -39,7 +39,7 @@ async function connectDB() {
             allowedRoleId = settings.allowedRoleId || null;
         }
     } catch (e) {
-        console.error('خطأ في الاتصال بقاعدة البيانات:', e);
+        console.error('خطأ في الاتصال بقاعدة البيانات (تأكد من الـ MONGO_URI و Network Access):', e.message);
     }
 }
 connectDB();
@@ -121,11 +121,40 @@ const hugeWordsList = [
     'جاوا', 'بايثون', 'ريأكت', 'جافاسكريبت', 'نود', 'تليجرام', 'يوتيوب', 'تويتر', 'تيكتوك', 'انستغرام',
     'سحابية', 'مرن', 'سريع', 'ذكي', 'اصطناعي', 'توجيه', 'تنسيق', 'ترجمة', 'تواصل', 'محادثة',
     'مشاهدة', 'استماع', 'أغنية', 'نغمة', 'صوتيات', 'مرئيات', 'بث', 'مباشر', 'تسجيل', 'دخول',
-    'خروج', 'تسجيل', 'حساب', 'كلمة', 'مرور', 'تحقق', 'بصمة', 'صلاحية', 'مشرف', 'مدير',
-    'منسق', 'مساعد', 'رئيسي', 'فرعي', 'عام', 'خاص', 'مجموعة', 'فردي', 'جماعي', 'شارك',
-    'تفاعل', 'ارسل', 'استقبل', 'نسخ', 'لصق', 'حذف', 'تعديل', 'إضافة', 'تأكيد', 'رجوع',
-    'تقدم', 'استمرار', 'توقف', 'انتظار', 'جاهز', 'انطلق', 'ابدأ', 'انتهي', 'سؤال', 'جواب',
-    'حل', 'مشكلة', 'خطأ', 'صواب', 'دقيق', 'ممتاز', 'جيد', 'سيء', 'ضعيف', 'قوي'
+    'خروج', 'حساب', 'كلمة', 'مرور', 'تحقق', 'بصمة', 'صلاحية', 'مشرف', 'مدير', 'منسق', 
+    'مساعد', 'رئيسي', 'فرعي', 'عام', 'خاص', 'مجموعة', 'فردي', 'جماعي', 'شارك', 'تفاعل', 
+    'ارسل', 'استقبل', 'نسخ', 'لصق', 'حذف', 'تعديل', 'إضافة', 'تأكيد', 'رجوع', 'تقدم', 
+    'استمرار', 'توقف', 'انتظار', 'جاهز', 'انطلق', 'ابدأ', 'انتهي', 'سؤال', 'جواب', 'حل', 
+    'مشكلة', 'خطأ', 'صواب', 'دقيق', 'ممتاز', 'جيد', 'سيء', 'ضعيف', 'قوي', 'شجاعة',
+    'مكتبة', 'طاولة', 'كرسي', 'نافذة', 'باب', 'غرفة', 'منزل', 'شارع', 'مدينة', 'دولة',
+    'عاصمة', 'جبل', 'نهر', 'بحر', 'محيط', 'سماء', 'قمر', 'شمس', 'نجوم', 'سحاب',
+    'مطَر', 'رعد', 'برق', 'رياح', 'عاصفة', 'صحراء', 'واحة', 'شجرة', 'وردة', 'زهرة',
+    'طير', 'أسد', 'نمر', 'فهد', 'ذئب', 'صقر', 'نسر', 'حمام', 'قطة', 'كلب',
+    'حصان', 'جمل', 'خروف', 'بقرة', 'ثور', 'فيل', 'زرافة', 'قرد', 'دب', 'ثعلب',
+    'سيارة', 'طائرة', 'قطار', 'سفينة', 'قارب', 'دراجة', 'صاروخ', 'ممر', 'جسر', 'طريق',
+    'حقيبة', 'محفظة', 'قلم', 'دفتر', 'كتاب', 'رسم', 'لوحة', 'فرشاة', 'لون', 'أحمر',
+    'أزرق', 'أخضر', 'أصفر', 'أسود', 'أبيض', 'رمادي', 'بنفسجي', 'برتقالي', 'وردي', 'ذهبي',
+    'فضي', 'حديد', 'نحاس', 'ذهب', 'فضة', 'ألماس', 'ياقوت', 'زبرجد', 'خشب', 'صخر',
+    'تراب', 'ماء', 'هواء', 'نار', 'طاقة', 'حرارة', 'برودة', 'ثلوج', 'جليد', 'بخار',
+    'طبيب', 'مهندس', 'معلم', 'طالب', 'مدير', 'شرطي', 'جندي', 'قائد', 'سائق', 'فنان',
+    'كاتب', 'شاعر', 'لاعب', 'حارس', 'مدرب', 'تاجر', 'صانع', 'نجار', 'حداد', 'خياط',
+    'ساعة', 'دقيقة', 'ثانية', 'يوم', 'أسبوع', 'شهر', 'سنة', 'قرن', 'صباح', 'مساء',
+    'ليل', 'نهار', 'فجر', 'ظهر', 'عصر', 'مغرب', 'عشاء', 'صيف', 'شتاء', 'ربيع',
+    'خريف', 'فصل', 'مناخ', 'طقس', 'طعام', 'شراب', 'خبز', 'لحم', 'دجاج', 'سمك',
+    'أرز', 'سكر', 'ملح', 'زيت', 'ماء', 'شاي', 'قهوة', 'حليب', 'عصير', 'تفاح',
+    'موز', 'برتقال', 'عنب', 'توت', 'رمان', 'بطيخ', 'مشمش', 'خوخ', 'طماطم', 'خيار',
+    'خس', 'جزر', 'بطاطس', 'بصل', 'ثوم', 'ليمون', 'فراولة', 'مانجو', 'اناناس',
+    'استخراج', 'استكشاف', 'استنتاج', 'استبدال', 'استخدام', 'استرجاع', 'استفسار', 'استعداد', 'استقرار', 'استيعاب',
+    'مستودع', 'مستشار', 'مستثمر', 'مستحيل', 'مستصعب', 'مستجدات', 'مستهدف', 'مستشعر', 'مستضيف', 'مستمع',
+    'تكنولوجيا', 'إلكترونيات', 'ميكانيكا', 'هندسة', 'روبوتات', 'أتمتة', 'خوادم', 'بوابات', 'بروتوكول', 'تشفير',
+    'ميغابايت', 'جيجابايت', 'تيرابايت', 'سيرفرات', 'ديسكوردية', 'قوانين', 'صلاحيات', 'رتب', 'رولات', 'أوسمة',
+    'تحديات', 'مواجهات', 'معارك', 'حروب', 'منافسات', 'دوري', 'كأس', 'درع', 'ميدالية', 'جائزة',
+    'تكريم', 'تهنئة', 'احتفال', 'مهرجان', 'مؤتمر', 'معرض', 'ملتقى', 'منتدى', 'حوار', 'نقاش',
+    'محاضرة', 'درس', 'اختبار', 'امتحان', 'نتيجة', 'شهادة', 'دبلوم', 'بكالوريوس', 'ماجستير', 'دكتوراه',
+    'جامعة', 'كلية', 'معهد', 'مدرسة', 'فصل', 'قاعة', 'مختبر', 'مكتب', 'شركة', 'مؤسسة',
+    'مصنع', 'مشروع', 'استثمار', 'تجارة', 'سوق', 'بورصة', 'أسهم', 'عملات', 'أرباح',
+    'خسائر', 'ميزانية', 'حسابات', 'مصروفات', 'إيرادات', 'ضرائب', 'رسوم', 'تمويل', 'قرض', 'دفع',
+    'تحويل', 'إيداع', 'سحب', 'صراف', 'بنك', 'مصرف', 'محفظة', 'رصيد', 'عملية', 'تأكيد'
 ];
 
 let availableWords = [];
@@ -176,7 +205,8 @@ const commands = [
                     { name: 'سرعة', value: 'سرعة' },
                     { name: 'فك', value: 'فك' },
                     { name: 'أدمج', value: 'أدمج' },
-                    { name: 'أعلام', value: 'أعلام' }
+                    { name: 'أعلام', value: 'أعلام' },
+                    { name: 'رياضيات', value: 'رياضيات' }
                 )
         )
         .addIntegerOption(option =>
@@ -238,13 +268,45 @@ function getGamePayload(gameType) {
     } else if (gameType === 'فك') {
         instructions = 'أسرع شخص يفكك الكلمة (يحط مسافة بين كل حرف):';
         const w = getUniqueWord();
-        answerText = makeSpaced(w); // الإجابة مفككة
-        displayText = `# ${w}`; // العرض كلمة متصلة
+        answerText = makeSpaced(w); 
+        displayText = `# ${w}`; 
     } else if (gameType === 'أدمج') {
         instructions = 'أسرع شخص يدمج الحروف ويكتب الكلمة:';
         const w = getUniqueWord();
-        answerText = w; // الإجابة متصلة
-        displayText = `# ${makeSpaced(w)}`; // العرض حروف مفككة
+        answerText = w; 
+        displayText = `# ${makeSpaced(w)}`; 
+    } else if (gameType === 'رياضيات') {
+        instructions = 'أسرع شخص يحل المسألة الرياضية التالية:';
+        const ops = ['+', '-', '*', '/'];
+        const chosenOp = ops[Math.floor(Math.random() * ops.length)];
+        let num1, num2, result;
+
+        if (chosenOp === '+') {
+            num1 = Math.floor(Math.random() * 90) + 10;
+            num2 = Math.floor(Math.random() * 90) + 10;
+            result = num1 + num2;
+        } else if (chosenOp === '-') {
+            num1 = Math.floor(Math.random() * 90) + 10;
+            num2 = Math.floor(Math.random() * 90) + 10;
+            if (num1 < num2) [num1, num2] = [num2, num1]; // تجنب السلبيات
+            result = num1 - num2;
+        } else if (chosenOp === '*') {
+            num1 = Math.floor(Math.random() * 12) + 2;
+            num2 = Math.floor(Math.random() * 12) + 2;
+            result = num1 * num2;
+        } else if (chosenOp === '/') {
+            num2 = Math.floor(Math.random() * 10) + 2;
+            const multiplier = Math.floor(Math.random() * 10) + 2;
+            num1 = num2 * multiplier; // ضمان ناتج قسمة صحيح بدون كسور
+            result = num1 / num2;
+        }
+
+        answerText = result.toString();
+        let opSymbol = chosenOp;
+        if (chosenOp === '*') opSymbol = '×';
+        if (chosenOp === '/') opSymbol = '÷';
+        
+        displayText = `# ${num1} ${opSymbol} ${num2} = ?`;
     }
     return { answerText, displayText, instructions };
 }
@@ -337,12 +399,11 @@ client.on('messageCreate', async message => {
         let userAns = message.content.trim().replace(/أ|إ|آ/g, 'ا');
         let correctAns = activeGame.answer.trim().replace(/أ|إ|آ/g, 'ا');
 
-        // تعديل مهم: لعبة "فك" لازم فيها مسافات، باقي الألعاب نتجاهل المسافات عشان لو اللاعب غلط
         if (activeGame.type === 'فك') {
-            userAns = userAns.replace(/\s+/g, ' '); // نخليها مسافة واحدة بين الحروف
+            userAns = userAns.replace(/\s+/g, ' '); 
             correctAns = correctAns.replace(/\s+/g, ' ');
         } else {
-            userAns = userAns.replace(/\s+/g, ''); // نحذف كل المسافات للألعاب الثانية
+            userAns = userAns.replace(/\s+/g, ''); 
             correctAns = correctAns.replace(/\s+/g, '');
         }
 
@@ -358,7 +419,7 @@ client.on('messageCreate', async message => {
 
             await message.reply(`فاز <@${userId}> وأخذ ${activeGame.points} نقطة.`);
             
-            if (activeGame.type === 'سرعة' || activeGame.type === 'فك' || activeGame.type === 'أدمج') {
+            if (['سرعة', 'فك', 'أدمج', 'رياضيات'].includes(activeGame.type)) {
                 const payload = getGamePayload(activeGame.type);
                 activeGame.answer = payload.answerText;
                 activeGame.isProcessing = false;
@@ -382,7 +443,7 @@ client.on('interactionCreate', async interaction => {
             .setColor(0x0099FF)
             .setDescription(
                 '**🎮 أوامر الألعاب:**\n' +
-                '`/play` - لبدء لعبة جديدة (سرعة، فك، أدمج، أعلام)\n' +
+                '`/play` - لبدء لعبة جديدة (سرعة، فك، أدمج، أعلام، رياضيات)\n' +
                 '`/stop` - لإيقاف اللعبة الحالية\n' +
                 '`/games` - لعرض الألعاب المتوفرة\n\n' +
                 '**🏆 أوامر النقاط:**\n' +
@@ -397,7 +458,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ embeds: [helpEmbed] });
     } 
     else if (commandName === 'games') {
-        await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\``);
+        await interaction.reply(`الألعاب المتوفرة:\n\`سرعة\` | \`فك\` | \`أدمج\` | \`أعلام\` | \`رياضيات\``);
     } 
     else if (commandName === 'setrole') {
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'للأدمن فقط', ephemeral: true });
@@ -416,7 +477,7 @@ client.on('interactionCreate', async interaction => {
             if (activeGame.timeoutTimer) clearTimeout(activeGame.timeoutTimer);
         }
 
-        if (gameType === 'سرعة' || gameType === 'فك' || gameType === 'أدمج') {
+        if (['سرعة', 'فك', 'أدمج', 'رياضيات'].includes(gameType)) {
             const payload = getGamePayload(gameType);
             activeGame = { type: gameType, answer: payload.answerText, points: customPoints, missedCount: 0, isProcessing: false };
             setGameTimeout(interaction.channel);
