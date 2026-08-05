@@ -286,10 +286,10 @@ async function verifyCategoryAnswer(category, letter, userWord) {
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: prompt,
+            contents: [prompt],
         });
 
-        const text = response.text.trim();
+        const text = response.text ? response.text.trim() : '';
         return text.includes('نعم');
     } catch (e) {
         console.error("AI Check Error:", e);
